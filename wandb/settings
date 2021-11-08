@@ -1,4 +1,3 @@
 [default]
 entity = vit-robustness
 base_url = https://api.wandb.ai
-
