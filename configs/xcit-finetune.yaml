@@ -39,8 +39,8 @@ interpolation: ''
 jsd_loss: false
 local_rank: 0
 log_interval: 50
-log_wandb: true
-lr: 5.0e-5 # LR reduced by factor 10 (Sec 4.4.3 CaiT paper)
+log_wandb: false
+lr: 5.0e-6 # LR reduced by factor 10 (Sec 4.4.3 CaiT paper)
 lr_cycle_decay: 0.5
 lr_cycle_limit: 1
 lr_cycle_mul: 1.0
@@ -60,7 +60,8 @@ model_ema: true
 model_ema_decay: 0.99996
 momentum: 0.9
 no_aug: false
-no_resume_opt: false
+no_resume_opt: true
+no_resume_epoch: true 
 num_classes: null
 opt: adamw
 opt_betas: null

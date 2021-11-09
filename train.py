@@ -98,6 +98,10 @@ parser.add_argument(
     action='store_true',
     default=False,
     help='prevent resume of optimizer state when resuming model')
+parser.add_argument('--no-resume-epoch',
+                    action='store_true',
+                    default=False,
+                    help='prevent resume of epoch number when resuming model')
 parser.add_argument('--num-classes',
                     type=int,
                     default=None,
@@ -671,7 +675,7 @@ def main():
                         hparams=vars(args),
                         output_enabled=dev_env.primary,
                         experiment_name=args.experiment,
-                        log_wandb=args.log_wandb and dev_env.global_rank == 0),
+                        log_wandb=args.log_wandb and dev_env.primary),
         checkpoint=checkpoint_manager,
     )
 
@@ -742,6 +746,9 @@ def main():
         _logger.info('*** Best metric: {0} (epoch {1})'.format(
             best_metric, best_epoch))
 
+    if services.monitor.wandb_run is not None:
+        services.monitor.wandb_run.finish()
+
 
 def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
 
@@ -787,6 +794,12 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         resume_path=args.resume,
         use_syncbn=args.sync_bn,
         resume_opt=not args.no_resume_opt)
+
+    if args.no_resume_epoch:
+        train_state = replace(train_state,
+                              epoch=0,
+                              step_count=0,
+                              step_count_global=0)
 
     # setup learning rate schedule and starting epoch
     # FIXME move into updater?
