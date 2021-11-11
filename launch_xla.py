@@ -6,7 +6,6 @@ training processes on each of the training nodes.
 
 """
 
-
 import importlib
 import os
 import subprocess
@@ -24,17 +23,21 @@ def parse_args():
     """
     parser = ArgumentParser(
         description="PyTorch distributed training launch helper utility"
-                    "that will spawn up multiple distributed processes")
+        "that will spawn up multiple distributed processes")
 
     # Optional arguments for the launch helper
-    parser.add_argument("--num-devices", type=int, default=1,
-                        help="The number of XLA devices to use for distributed training")
+    parser.add_argument(
+        "--num-devices",
+        type=int,
+        default=1,
+        help="The number of XLA devices to use for distributed training")
 
     # positional
     parser.add_argument(
-        "script", type=str,
+        "script",
+        type=str,
         help="The full path to the single device training script to be launched"
-             "in parallel, followed by all the arguments for the training script")
+        "in parallel, followed by all the arguments for the training script")
 
     # rest from the training program
     parser.add_argument('script_args', nargs=REMAINDER)

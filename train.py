@@ -15,27 +15,26 @@ NVIDIA CUDA specific speedups adopted from NVIDIA Apex examples
 Hacked together by / Copyright 2020 Ross Wightman (https://github.com/rwightman)
 """
 import argparse
-import time
-import yaml
-import os
 import logging
+import os
 from collections import OrderedDict
-from datetime import datetime
 from dataclasses import replace
+from datetime import datetime
 from typing import Tuple
 
 import torch
 import torch.nn as nn
-
-from timm.bits import initialize_device, setup_model_and_optimizer, DeviceEnv, Monitor, Tracker,\
-    TrainState, TrainServices, TrainCfg, CheckpointManager, AccuracyTopK, AvgTensor, distribute_bn
-from timm.data import create_transform_v2, create_loader_v2, resolve_data_config,\
-    PreprocessCfg, AugCfg, MixupCfg, AugMixDataset
-from timm.models import create_model, safe_model_name, convert_splitbn_model
+import yaml
+from timm.bits import AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv, distribute_bn, \
+    initialize_device, Monitor, setup_model_and_optimizer, Tracker, TrainCfg, TrainServices, \
+    TrainState
+from timm.data import AugCfg, AugMixDataset, create_loader_v2, create_transform_v2, MixupCfg, \
+    PreprocessCfg, resolve_data_config
 from timm.loss import *
+from timm.models import convert_splitbn_model, create_model, safe_model_name
 from timm.optim import optimizer_kwargs
 from timm.scheduler import create_scheduler
-from timm.utils import setup_default_logging, random_seed, get_outdir, unwrap_model
+from timm.utils import get_outdir, random_seed, setup_default_logging, unwrap_model
 
 import utils
 
@@ -590,6 +589,44 @@ parser.add_argument('--log-wandb',
                     default=False,
                     help='log training and validation metrics to wandb')
 
+# Adversarial training arguments
+# Args for adversarial training:
+parser.add_argument('--adv-training',
+                    action='store_true',
+                    default=False,
+                    help='Run adversarial training')
+parser.add_argument('--attack',
+                    default='pgd',
+                    type=str,
+                    metavar='ATTACK',
+                    help='What attack to use (default: "pgd")')
+parser.add_argument('--attack-eps',
+                    default=8 / 255,
+                    type=float,
+                    metavar='EPS',
+                    help='The epsilon to use for the attack (default 8/255)')
+parser.add_argument('--attack-lr',
+                    default=1e-4,
+                    type=float,
+                    metavar='ATTACK_LR',
+                    help='Learning rate for the attack (default 1e-4)')
+parser.add_argument('--attack-steps',
+                    default=10,
+                    type=int,
+                    metavar='ATTACK_STEPS',
+                    help='Number of steps to run attack for (default 10)')
+parser.add_argument('--attack-norm',
+                    default='linf',
+                    type=str,
+                    metavar='NORM',
+                    help='The norm to use for the attack (default linf)')
+parser.add_argument('--attack-boundaries',
+                    default=(0, 1),
+                    nargs=2,
+                    type=int,
+                    metavar='L H',
+                    help='Boundaries of projection')
+
 
 def _parse_args():
     # Do we have a config file to parse?
@@ -831,7 +868,13 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
     else:
         train_loss_fn = nn.CrossEntropyLoss()
     eval_loss_fn = nn.CrossEntropyLoss()
-    dev_env.to_device(train_loss_fn, eval_loss_fn)
+
+    if args.adv_training:
+        compute_loss_fn = None
+    else:
+        compute_loss_fn = utils.ComputeLossFn(train_loss_fn)
+
+    dev_env.to_device(train_loss_fn, eval_loss_fn, compute_loss_fn)
 
     if dev_env.primary:
         _logger.info('Scheduled epochs: {}'.format(num_epochs))
@@ -849,6 +892,9 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         eval_loss=eval_loss_fn,
         train_cfg=train_cfg,
     )
+
+    train_state = utils.AdvTrainState.from_bits(
+        train_state, compute_loss_fn=compute_loss_fn)
 
     return train_state
 
@@ -964,7 +1010,7 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
 
 
 def train_one_epoch(
-    state: TrainState,
+    state: utils.AdvTrainState,
     services: TrainServices,
     loader,
     dev_env: DeviceEnv,
@@ -983,8 +1029,7 @@ def train_one_epoch(
 
         # FIXME move forward + loss into model 'task' wrapper
         with dev_env.autocast():
-            output = state.model(sample)
-            loss = state.train_loss(output, target)
+            loss, output, _ = state.compute_loss_fn(state.model, sample, target)
 
         state.updater.apply(loss)
 
