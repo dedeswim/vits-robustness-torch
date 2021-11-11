@@ -7,12 +7,12 @@ training processes on each of the training nodes.
 """
 
 
-import sys
-import subprocess
 import importlib
 import os
-from argparse import ArgumentParser, REMAINDER
-from typing import Optional, IO
+import subprocess
+import sys
+from argparse import REMAINDER, ArgumentParser
+from typing import IO, Optional
 
 import torch_xla.distributed.xla_multiprocessing as xmp
 
