@@ -20,7 +20,7 @@ import os
 from collections import OrderedDict
 from dataclasses import replace
 from datetime import datetime
-from typing import Tuple
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -36,7 +36,9 @@ from timm.optim import optimizer_kwargs
 from timm.scheduler import create_scheduler
 from timm.utils import get_outdir, random_seed, setup_default_logging, unwrap_model
 
+import attacks
 import utils
+from attacks import AttackFn
 
 _logger = logging.getLogger('train')
 
@@ -97,10 +99,6 @@ parser.add_argument(
     action='store_true',
     default=False,
     help='prevent resume of optimizer state when resuming model')
-parser.add_argument('--no-resume-epoch',
-                    action='store_true',
-                    default=False,
-                    help='prevent resume of epoch number when resuming model')
 parser.add_argument('--num-classes',
                     type=int,
                     default=None,
@@ -649,8 +647,6 @@ def main():
     setup_default_logging()
     args, args_text = _parse_args()
 
-    _logger.info(f"Local rank: {args.local_rank}")
-
     dev_env = initialize_device(force_cpu=args.force_cpu,
                                 amp=args.amp,
                                 channels_last=args.channels_last)
@@ -718,6 +714,13 @@ def main():
 
     _logger.info('Starting training, the first steps may take a long time')
 
+    if args.adv_training:
+        eval_attack = attacks.make_attack(args.attack, args.attack_eps, args.attack_lr,
+                                          args.attack_steps, args.attack_norm,
+                                          args.attack_boundaries)
+    else:
+        eval_attack = None
+
     try:
         for epoch in range(train_state.epoch, train_cfg.num_epochs):
             if dev_env.distributed and hasattr(loader_train.sampler,
@@ -742,7 +745,7 @@ def main():
                               dev_env)
 
             eval_metrics = evaluate(train_state.model, train_state.eval_loss,
-                                    loader_eval, services.monitor, dev_env)
+                                    loader_eval, services.monitor, dev_env, attack=eval_attack)
 
             if train_state.model_ema is not None:
                 if dev_env.distributed and args.dist_bn in ('broadcast',
@@ -832,12 +835,6 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         use_syncbn=args.sync_bn,
         resume_opt=not args.no_resume_opt)
 
-    if args.no_resume_epoch:
-        train_state = replace(train_state,
-                              epoch=0,
-                              step_count=0,
-                              step_count_global=0)
-
     # setup learning rate schedule and starting epoch
     # FIXME move into updater?
     lr_scheduler, num_epochs = create_scheduler(args,
@@ -870,7 +867,9 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
     eval_loss_fn = nn.CrossEntropyLoss()
 
     if args.adv_training:
-        compute_loss_fn = None
+        attack = attacks.make_attack(args.attack, args.attack_eps, args.attack_lr,
+                                     args.attack_steps, args.attack_norm, args.attack_boundaries)
+        compute_loss_fn = attacks.TRADESLoss(attack, train_loss_fn, 6.0)
     else:
         compute_loss_fn = utils.ComputeLossFn(train_loss_fn)
 
@@ -1016,8 +1015,10 @@ def train_one_epoch(
     dev_env: DeviceEnv,
 ):
     tracker = Tracker()
-    loss_meter = AvgTensor(
-    )  # FIXME move loss meter into task specific TaskMetric
+    # FIXME move loss meter into task specific TaskMetric
+    loss_meter = AvgTensor()
+    accuracy_meter = AccuracyTopK()
+    robust_accuracy_meter = AccuracyTopK()
 
     state.model.train()
     state.updater.reset()  # zero-grad
@@ -1029,7 +1030,7 @@ def train_one_epoch(
 
         # FIXME move forward + loss into model 'task' wrapper
         with dev_env.autocast():
-            loss, output, _ = state.compute_loss_fn(state.model, sample, target)
+            loss, output, adv_output = state.compute_loss_fn(state.model, sample, target)
 
         state.updater.apply(loss)
 
@@ -1044,7 +1045,9 @@ def train_one_epoch(
             step_end_idx,
             tracker,
             loss_meter,
-            (output, target, loss),
+            accuracy_meter,
+            robust_accuracy_meter,
+            (output, adv_output, target, loss),
         )
 
         tracker.mark_iter()
@@ -1057,14 +1060,16 @@ def train_one_epoch(
 
 
 def after_train_step(
-    state: TrainState,
-    services: TrainServices,
-    dev_env: DeviceEnv,
-    step_idx: int,
-    step_end_idx: int,
-    tracker: Tracker,
-    loss_meter: AvgTensor,
-    tensors: Tuple[torch.Tensor, ...],
+        state: TrainState,
+        services: TrainServices,
+        dev_env: DeviceEnv,
+        step_idx: int,
+        step_end_idx: int,
+        tracker: Tracker,
+        loss_meter: AvgTensor,
+        accuracy_meter: AccuracyTopK,
+        robust_accuracy_meter: AccuracyTopK,
+        tensors: Tuple[torch.Tensor, ...],
 ):
     """
     After the core loss / backward / gradient apply step, we perform all non-gradient related
@@ -1082,6 +1087,8 @@ def after_train_step(
         step_end_idx:
         tracker:
         loss_meter:
+        accuracy_meter:
+        robust_accuracy_meter:
         tensors:
 
     Returns:
@@ -1090,8 +1097,14 @@ def after_train_step(
     end_step = step_idx == step_end_idx
 
     with torch.no_grad():
-        output, target, loss = tensors
+        output, adv_output, target, loss = tensors
         loss_meter.update(loss, output.shape[0])
+        # accuracy_meter.update(output, target.argmax(dim=-1))
+
+        if adv_output is not None:
+            if isinstance(adv_output, (tuple, list)):
+                adv_output = adv_output[0]
+            robust_accuracy_meter.update(adv_output, target.argmax(axis=-1))
 
         if state.model_ema is not None:
             # FIXME should ema update be included here or in train / updater step? does it matter?
@@ -1104,16 +1117,24 @@ def after_train_step(
                 step_idx + 1) % cfg.log_interval == 0:
             global_batch_size = dev_env.world_size * output.shape[0]
             loss_avg = loss_meter.compute()
+            # accuracy_avg, _ = accuracy_meter.compute().items() # FIXME: gets stuck here
+            if adv_output is not None:
+                robust_accuracy_avg, _ = None, None  # robust_accuracy_meter.compute().items()
+            else:
+                robust_accuracy_avg = None
+
             if services.monitor is not None:
                 lr_avg = state.updater.get_average_lr()
                 services.monitor.log_step(
                     'Train',
-                    step=step_idx,
-                    step_end=step_end_idx,
+                    step_idx=step_idx,
+                    step_end_idx=step_end_idx,
                     epoch=state.epoch,
                     loss=loss_avg.item(),
                     rate=tracker.get_avg_iter_rate(global_batch_size),
                     lr=lr_avg,
+                    # accuracy=accuracy_avg,
+                    # robust_accuracy=robust_accuracy_avg,
                 )
 
         if services.checkpoint is not None and cfg.recovery_interval and (
@@ -1133,12 +1154,13 @@ def evaluate(
     dev_env: DeviceEnv,
     phase_suffix: str = '',
     log_interval: int = 10,
+        attack: Optional[AttackFn] = None
 ):
-
     tracker = Tracker()
     losses_m = AvgTensor()
-    accuracy_m = AccuracyTopK(
-    )  # FIXME move loss and accuracy modules into task specific TaskMetric obj
+    # FIXME move loss and accuracy modules into task specific TaskMetric obj
+    accuracy_m = AccuracyTopK()
+    robust_accuracy_m = AccuracyTopK()
 
     model.eval()
 
@@ -1151,9 +1173,12 @@ def evaluate(
 
             with dev_env.autocast():
                 output = model(sample)
-                if isinstance(output, (tuple, list)):
-                    output = output[0]
                 loss = loss_fn(output, target)
+                if attack is not None:
+                    adv_sample = attack(model, sample)
+                    adv_output = model(adv_sample)
+                else:
+                    adv_output = None
 
             # FIXME, explictly marking step for XLA use since I'm not using the parallel xm loader
             # need to investigate whether parallel loader wrapper is helpful on tpu-vm or only use for 2-vm setup.
@@ -1170,9 +1195,15 @@ def evaluate(
             tracker.mark_iter_step_end()
             losses_m.update(loss, output.size(0))
             accuracy_m.update(output, target)
+            if adv_output is not None:
+                robust_accuracy_m.update(adv_output, target)
 
             if last_step or step_idx % log_interval == 0:
                 top1, top5 = accuracy_m.compute().values()
+                if adv_output is not None:
+                    robust_top1, _ = robust_accuracy_m.compute().values()
+                else:
+                    robust_top1 = None
                 loss_avg = losses_m.compute()
                 logger.log_step(
                     'Eval',
@@ -1181,6 +1212,7 @@ def evaluate(
                     loss=loss_avg.item(),
                     top1=top1.item(),
                     top5=top5.item(),
+                    robust_top1=robust_top1,
                     phase_suffix=phase_suffix,
                 )
             tracker.mark_iter()
