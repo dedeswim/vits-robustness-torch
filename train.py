@@ -715,9 +715,14 @@ def main():
     _logger.info('Starting training, the first steps may take a long time')
 
     if args.adv_training:
-        eval_attack = attacks.make_attack(args.attack, args.attack_eps, args.attack_lr,
-                                          args.attack_steps, args.attack_norm,
-                                          args.attack_boundaries)
+        eval_criterion = nn.NLLLoss(reduction='sum')
+        eval_attack = attacks.make_attack(args.attack,
+                                          args.attack_eps,
+                                          args.attack_lr,
+                                          args.attack_steps,
+                                          args.attack_norm,
+                                          args.attack_boundaries,
+                                          criterion=eval_criterion)
     else:
         eval_attack = None
 
@@ -744,8 +749,12 @@ def main():
                 distribute_bn(train_state.model, args.dist_bn == 'reduce',
                               dev_env)
 
-            eval_metrics = evaluate(train_state.model, train_state.eval_loss,
-                                    loader_eval, services.monitor, dev_env, attack=eval_attack)
+            eval_metrics = evaluate(train_state.model,
+                                    train_state.eval_loss,
+                                    loader_eval,
+                                    services.monitor,
+                                    dev_env,
+                                    attack=eval_attack)
 
             if train_state.model_ema is not None:
                 if dev_env.distributed and args.dist_bn in ('broadcast',
@@ -867,8 +876,14 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
     eval_loss_fn = nn.CrossEntropyLoss()
 
     if args.adv_training:
-        attack = attacks.make_attack(args.attack, args.attack_eps, args.attack_lr,
-                                     args.attack_steps, args.attack_norm, args.attack_boundaries)
+        train_criterion = nn.KLDivLoss(reduction="sum")
+        attack = attacks.make_attack(args.attack,
+                                     args.attack_eps,
+                                     args.attack_lr,
+                                     args.attack_steps,
+                                     args.attack_norm,
+                                     args.attack_boundaries,
+                                     criterion=train_criterion)
         compute_loss_fn = attacks.TRADESLoss(attack, train_loss_fn, 6.0)
     else:
         compute_loss_fn = utils.ComputeLossFn(train_loss_fn)
@@ -1030,7 +1045,8 @@ def train_one_epoch(
 
         # FIXME move forward + loss into model 'task' wrapper
         with dev_env.autocast():
-            loss, output, adv_output = state.compute_loss_fn(state.model, sample, target)
+            loss, output, adv_output = state.compute_loss_fn(
+                state.model, sample, target)
 
         state.updater.apply(loss)
 
@@ -1060,16 +1076,16 @@ def train_one_epoch(
 
 
 def after_train_step(
-        state: TrainState,
-        services: TrainServices,
-        dev_env: DeviceEnv,
-        step_idx: int,
-        step_end_idx: int,
-        tracker: Tracker,
-        loss_meter: AvgTensor,
-        accuracy_meter: AccuracyTopK,
-        robust_accuracy_meter: AccuracyTopK,
-        tensors: Tuple[torch.Tensor, ...],
+    state: TrainState,
+    services: TrainServices,
+    dev_env: DeviceEnv,
+    step_idx: int,
+    step_end_idx: int,
+    tracker: Tracker,
+    loss_meter: AvgTensor,
+    accuracy_meter: AccuracyTopK,
+    robust_accuracy_meter: AccuracyTopK,
+    tensors: Tuple[torch.Tensor, ...],
 ):
     """
     After the core loss / backward / gradient apply step, we perform all non-gradient related
@@ -1146,16 +1162,14 @@ def after_train_step(
             state.lr_scheduler.step_update(num_updates=state.step_count_global)
 
 
-def evaluate(
-    model: nn.Module,
-    loss_fn: nn.Module,
-    loader,
-    logger: Monitor,
-    dev_env: DeviceEnv,
-    phase_suffix: str = '',
-    log_interval: int = 10,
-        attack: Optional[AttackFn] = None
-):
+def evaluate(model: nn.Module,
+             loss_fn: nn.Module,
+             loader,
+             logger: Monitor,
+             dev_env: DeviceEnv,
+             phase_suffix: str = '',
+             log_interval: int = 10,
+             attack: Optional[AttackFn] = None):
     tracker = Tracker()
     losses_m = AvgTensor()
     # FIXME move loss and accuracy modules into task specific TaskMetric obj
@@ -1175,7 +1189,7 @@ def evaluate(
                 output = model(sample)
                 loss = loss_fn(output, target)
                 if attack is not None:
-                    adv_sample = attack(model, sample)
+                    adv_sample = attack(model, sample, target)
                     adv_output = model(adv_sample)
                 else:
                     adv_output = None

@@ -32,8 +32,9 @@ class ComputeLossFn(nn.Module):
         super().__init__()
         self.loss_fn = loss_fn
 
-    def forward(self, model: nn.Module, x: torch.Tensor, y: torch.Tensor) -> Tuple[
-        torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+    def forward(
+        self, model: nn.Module, x: torch.Tensor, y: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         output = model(x)
         return self.loss_fn(output, y), output, None
 

@@ -106,7 +106,7 @@ adv-training: true
 attack: pgd
 attack-eps: 8/255
 attack-lr: 1.e-4
-attack-steps: 10
+attack-steps: 7
 attack-norm: linf
 attack-boundaries:
 - 0
