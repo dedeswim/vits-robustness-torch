@@ -691,7 +691,7 @@ def main():
                 str(data_config['input_size'][-1])
             ])
         output_dir = get_outdir(
-            args.output if args.output else './output/train', exp_name)
+            args.output if args.output else './output/train', exp_name, inc=True)
         checkpoint_manager = CheckpointManager(
             hparams=vars(args),
             checkpoint_dir=output_dir,
@@ -713,18 +713,6 @@ def main():
     )
 
     _logger.info('Starting training, the first steps may take a long time')
-
-    if args.adv_training:
-        eval_criterion = nn.NLLLoss(reduction='sum')
-        eval_attack = attacks.make_attack(args.attack,
-                                          args.attack_eps,
-                                          args.attack_lr,
-                                          args.attack_steps,
-                                          args.attack_norm,
-                                          args.attack_boundaries,
-                                          criterion=eval_criterion)
-    else:
-        eval_attack = None
 
     try:
         for epoch in range(train_state.epoch, train_cfg.num_epochs):
@@ -753,8 +741,7 @@ def main():
                                     train_state.eval_loss,
                                     loader_eval,
                                     services.monitor,
-                                    dev_env,
-                                    attack=eval_attack)
+                                    dev_env)
 
             if train_state.model_ema is not None:
                 if dev_env.distributed and args.dist_bn in ('broadcast',
@@ -768,7 +755,7 @@ def main():
                                             services.monitor,
                                             dev_env,
                                             phase_suffix='EMA')
-                # eval_metrics = ema_eval_metrics
+                eval_metrics = ema_eval_metrics
 
             if train_state.lr_scheduler is not None:
                 # step LR for next epoch
@@ -796,6 +783,11 @@ def main():
             best_metric, best_epoch))
 
     if services.monitor.wandb_run is not None:
+        import wandb
+        artifact = wandb.Artifact('checkpoints', type='model')
+        artifact.add_file(os.path.join(output_dir, "best.pth.tar"))
+        artifact.add_file(os.path.join(output_dir, "last.pth.tar"))
+        services.monitor.wandb_run.log_artifact(artifact)
         services.monitor.wandb_run.finish()
 
 
@@ -1148,14 +1140,12 @@ def after_train_step(
                     epoch=state.epoch,
                     loss=loss_avg.item(),
                     rate=tracker.get_avg_iter_rate(global_batch_size),
-                    lr=lr_avg,
-                    # accuracy=accuracy_avg,
-                    # robust_accuracy=robust_accuracy_avg,
+                    lr=lr_avg
                 )
 
         if services.checkpoint is not None and cfg.recovery_interval and (
                 end_step or (step_idx + 1) % cfg.recovery_interval == 0):
-            services.checkpoint.save_recovery(state.epoch, batch_idx=step_idx)
+            services.checkpoint.save_recovery(state)
 
         if state.lr_scheduler is not None:
             # FIXME perform scheduler update here or via updater after_step call?
@@ -1174,7 +1164,6 @@ def evaluate(model: nn.Module,
     losses_m = AvgTensor()
     # FIXME move loss and accuracy modules into task specific TaskMetric obj
     accuracy_m = AccuracyTopK()
-    robust_accuracy_m = AccuracyTopK()
 
     model.eval()
 
@@ -1188,14 +1177,6 @@ def evaluate(model: nn.Module,
             with dev_env.autocast():
                 output = model(sample)
                 loss = loss_fn(output, target)
-                if attack is not None:
-                    with torch.enable_grad():
-                        model.train()  # FIXME: understand why it is needed to use .train()
-                        adv_sample = attack(model, sample, target)
-                        model.eval()
-                    adv_output = model(adv_sample)
-                else:
-                    adv_output = None
 
             # FIXME, explictly marking step for XLA use since I'm not using the parallel xm loader
             # need to investigate whether parallel loader wrapper is helpful on tpu-vm or only use for 2-vm setup.
@@ -1212,15 +1193,9 @@ def evaluate(model: nn.Module,
             tracker.mark_iter_step_end()
             losses_m.update(loss, output.size(0))
             accuracy_m.update(output, target)
-            if adv_output is not None:
-                robust_accuracy_m.update(adv_output, target)
 
             if last_step or step_idx % log_interval == 0:
                 top1, top5 = accuracy_m.compute().values()
-                if adv_output is not None:
-                    robust_top1, _ = robust_accuracy_m.compute().values()
-                else:
-                    robust_top1 = None
                 loss_avg = losses_m.compute()
                 logger.log_step(
                     'Eval',
@@ -1229,14 +1204,13 @@ def evaluate(model: nn.Module,
                     loss=loss_avg.item(),
                     top1=top1.item(),
                     top5=top5.item(),
-                    robust_top1=robust_top1,
                     phase_suffix=phase_suffix,
                 )
             tracker.mark_iter()
 
     top1, top5 = accuracy_m.compute().values()
     results = OrderedDict([('loss', losses_m.compute().item()),
-                           ('top1', top1.item()), ('top5', top5.item())])
+                           ('top1', top1.item()), ])
     return results
 
 

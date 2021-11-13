@@ -104,10 +104,10 @@ weight_decay: 0.05
 workers: 4
 adv-training: true
 attack: pgd
-attack-eps: 4/255
-attack-lr: 1/255
-attack-steps: 7
-attack-norm: linf
-attack-boundaries:
+attack_eps: 0.015686275
+attack_lr: 0.007843137
+attack_steps: 7
+attack_norm: linf
+attack_boundaries:
 - 0
 - 1
