@@ -599,12 +599,12 @@ parser.add_argument('--attack',
                     metavar='ATTACK',
                     help='What attack to use (default: "pgd")')
 parser.add_argument('--attack-eps',
-                    default=8 / 255,
+                    default=4 / 255,
                     type=float,
                     metavar='EPS',
                     help='The epsilon to use for the attack (default 8/255)')
 parser.add_argument('--attack-lr',
-                    default=1e-4,
+                    default=1 / 255,
                     type=float,
                     metavar='ATTACK_LR',
                     help='Learning rate for the attack (default 1e-4)')
@@ -877,14 +877,14 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
 
     if args.adv_training:
         train_criterion = nn.KLDivLoss(reduction="sum")
-        attack = attacks.make_attack(args.attack,
-                                     args.attack_eps,
-                                     args.attack_lr,
-                                     args.attack_steps,
-                                     args.attack_norm,
-                                     args.attack_boundaries,
-                                     criterion=train_criterion)
-        compute_loss_fn = attacks.TRADESLoss(attack, train_loss_fn, 6.0)
+        train_attack = attacks.make_attack(args.attack,
+                                           args.attack_eps,
+                                           args.attack_lr,
+                                           args.attack_steps,
+                                           args.attack_norm,
+                                           args.attack_boundaries,
+                                           criterion=train_criterion)
+        compute_loss_fn = attacks.TRADESLoss(train_attack, train_loss_fn, 6.0)
     else:
         compute_loss_fn = utils.ComputeLossFn(train_loss_fn)
 
@@ -1189,7 +1189,10 @@ def evaluate(model: nn.Module,
                 output = model(sample)
                 loss = loss_fn(output, target)
                 if attack is not None:
-                    adv_sample = attack(model, sample, target)
+                    with torch.enable_grad():
+                        model.train()  # FIXME: understand why it is needed to use .train()
+                        adv_sample = attack(model, sample, target)
+                        model.eval()
                     adv_output = model(adv_sample)
                 else:
                     adv_output = None
@@ -1221,8 +1224,8 @@ def evaluate(model: nn.Module,
                 loss_avg = losses_m.compute()
                 logger.log_step(
                     'Eval',
-                    step=step_idx,
-                    step_end=end_idx,
+                    step_idx=step_idx,
+                    step_end_idx=end_idx,
                     loss=loss_avg.item(),
                     top1=top1.item(),
                     top5=top5.item(),
