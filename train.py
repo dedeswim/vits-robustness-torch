@@ -982,18 +982,11 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     # if using PyTorch XLA and RandomErasing is enabled, we must normalize and do RE in transforms on CPU
     normalize_in_transform = dev_env.type_xla and args.reprob > 0
 
-    dataset_train.transform = create_transform_v2(
-        cfg=train_pp_cfg,
-        is_training=True,
-        normalize=train_pp_cfg.normalize and normalize_in_transform)
-
     loader_train = create_loader_v2(
         dataset_train,
         batch_size=args.batch_size,
         is_training=True,
-        create_transform=False,
-        normalize_in_transform=train_pp_cfg.normalize
-        and not normalize_in_transform,
+        normalize_in_transform=normalize_in_transform,
         pp_cfg=train_pp_cfg,
         mix_cfg=mixup_cfg,
         num_workers=args.workers,
@@ -1001,11 +994,18 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
         use_multi_epochs_loader=args.use_multi_epochs_loader)
 
     if not train_pp_cfg.normalize:
-        loader_train.mean = None
-        loader_train.std = None
-        loader_train.dataset.transform.transforms[-1] = transforms.ToTensor()
+        if normalize_in_transform:
+            idx = -2 if args.reprob > 0 else -1
+            loader_train.dataset.transform.transforms[
+                idx] = transforms.ToTensor()
+        else:
+            loader_train.dataset.transform.transforms[
+                -1] = transforms.ToTensor()
+            loader_train.mean = None
+            loader_train.std = None
 
-    _logger.info(f"{dataset_train.transform.transforms=}")
+    if dev_env.primary:
+        _logger.info(f"{loader_train.dataset.transform=}")
 
     eval_pp_cfg = utils.MyPreprocessCfg(
         input_size=data_config['input_size'],
@@ -1016,11 +1016,6 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
         normalize=data_config['normalize'],
     )
 
-    dataset_eval.transform = create_transform_v2(
-        cfg=eval_pp_cfg,
-        is_training=False,
-        normalize=eval_pp_cfg.normalize and normalize_in_transform)
-
     eval_workers = args.workers
     if 'tfds' in args.dataset:
         # FIXME reduce validation issues when using TFDS w/ workers and distributed training
@@ -1029,13 +1024,20 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
         dataset_eval,
         batch_size=args.validation_batch_size or args.batch_size,
         is_training=False,
-        create_transform=False,
-        normalize_in_transform=eval_pp_cfg.normalize
-        and not normalize_in_transform,
+        normalize_in_transform=normalize_in_transform,
         pp_cfg=eval_pp_cfg,
         num_workers=eval_workers,
         pin_memory=args.pin_mem,
     )
+
+    if not eval_pp_cfg.normalize:
+        loader_eval.dataset.transform.transforms[-1] = transforms.ToTensor()
+        loader_eval.mean = None
+        loader_eval.std = None
+
+    if dev_env.primary:
+        _logger.info(f"{loader_eval.dataset.transform=}")
+
     return data_config, loader_eval, loader_train
 
 
