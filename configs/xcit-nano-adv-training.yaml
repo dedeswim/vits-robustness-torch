@@ -76,7 +76,7 @@ ratio:
 recount: 1
 recovery_interval: 0
 remode: pixel
-reprob: 0.25
+reprob: 0.0 # Removed because otherwise it breaks normalization
 resplit: false
 resume: ''
 save_images: false
@@ -105,8 +105,8 @@ workers: 4
 adv-training: true
 attack: pgd
 attack_eps: 0.015686275
-attack_lr: 0.007843137
-attack_steps: 7
+attack_lr: 0.015686275 # 0.007843137
+attack_steps: 1
 attack_norm: linf
 attack_boundaries:
 - 0

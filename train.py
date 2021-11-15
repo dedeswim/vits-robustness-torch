@@ -1004,9 +1004,6 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
             loader_train.mean = None
             loader_train.std = None
 
-    if dev_env.primary:
-        _logger.info(f"{loader_train.dataset.transform=}")
-
     eval_pp_cfg = utils.MyPreprocessCfg(
         input_size=data_config['input_size'],
         interpolation=data_config['interpolation'],
@@ -1035,9 +1032,6 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
         loader_eval.mean = None
         loader_eval.std = None
 
-    if dev_env.primary:
-        _logger.info(f"{loader_eval.dataset.transform=}")
-
     return data_config, loader_eval, loader_train
 
 
@@ -1060,8 +1054,6 @@ def train_one_epoch(
     tracker.mark_iter()
     for step_idx, (sample, target) in enumerate(loader):
         tracker.mark_iter_data_end()
-
-        _logger.info(f"{sample.min()=}, {sample.max()=}")
 
         # FIXME move forward + loss into model 'task' wrapper
         with dev_env.autocast():
