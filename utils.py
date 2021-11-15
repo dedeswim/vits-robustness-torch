@@ -65,3 +65,8 @@ class AdvTrainState(bits.TrainState):
 @dataclasses.dataclass
 class MyPreprocessCfg(PreprocessCfg):
     normalize: bool = True
+
+
+class ScaleIn0To1:
+    def __call__(self, x: torch.Tensor) -> torch.Tensor:
+        return x + 1 / 2

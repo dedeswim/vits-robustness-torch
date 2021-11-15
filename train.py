@@ -162,11 +162,12 @@ parser.add_argument('-vb',
                     default=None,
                     metavar='N',
                     help='validation batch size override (default: None)')
-parser.add_argument('-nn',
-                    '--no-normalize',
-                    action='store_true',
-                    default=True,
-                    help='Avoids normalizing inputs (but it scales them in [0, 1]')
+parser.add_argument(
+    '-nn',
+    '--no-normalize',
+    action='store_true',
+    default=True,
+    help='Avoids normalizing inputs (but it scales them in [0, 1]')
 
 # Optimizer parameters
 parser.add_argument('--opt',
@@ -697,7 +698,9 @@ def main():
                 str(data_config['input_size'][-1])
             ])
         output_dir = get_outdir(
-            args.output if args.output else './output/train', exp_name, inc=True)
+            args.output if args.output else './output/train',
+            exp_name,
+            inc=True)
         checkpoint_manager = CheckpointManager(
             hparams=vars(args),
             checkpoint_dir=output_dir,
@@ -743,11 +746,8 @@ def main():
                 distribute_bn(train_state.model, args.dist_bn == 'reduce',
                               dev_env)
 
-            eval_metrics = evaluate(train_state.model,
-                                    train_state.eval_loss,
-                                    loader_eval,
-                                    services.monitor,
-                                    dev_env)
+            eval_metrics = evaluate(train_state.model, train_state.eval_loss,
+                                    loader_eval, services.monitor, dev_env)
 
             if train_state.model_ema is not None:
                 if dev_env.distributed and args.dist_bn in ('broadcast',
@@ -980,25 +980,32 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     )
 
     # if using PyTorch XLA and RandomErasing is enabled, we must normalize and do RE in transforms on CPU
-    normalize_in_transform = dev_env.type_xla and args.reprob > 0 and train_pp_cfg.normalize
-    _logger.info(f"{train_pp_cfg.normalize=}, {normalize_in_transform=}")
+    normalize_in_transform = dev_env.type_xla and args.reprob > 0
 
     dataset_train.transform = create_transform_v2(
-        cfg=train_pp_cfg, is_training=True,
+        cfg=train_pp_cfg,
+        is_training=True,
         normalize=train_pp_cfg.normalize and normalize_in_transform)
-    if not train_pp_cfg.normalize:
-        dataset_train.transform.transforms[-1] = transforms.ToTensor()
 
     loader_train = create_loader_v2(
         dataset_train,
         batch_size=args.batch_size,
         is_training=True,
-        normalize_in_transform=not normalize_in_transform,
+        create_transform=False,
+        normalize_in_transform=train_pp_cfg.normalize
+        and not normalize_in_transform,
         pp_cfg=train_pp_cfg,
         mix_cfg=mixup_cfg,
         num_workers=args.workers,
         pin_memory=args.pin_mem,
         use_multi_epochs_loader=args.use_multi_epochs_loader)
+
+    if not train_pp_cfg.normalize:
+        loader_train.mean = None
+        loader_train.std = None
+        loader_train.dataset.transform.transforms[-1] = transforms.ToTensor()
+
+    _logger.info(f"{dataset_train.transform.transforms=}")
 
     eval_pp_cfg = utils.MyPreprocessCfg(
         input_size=data_config['input_size'],
@@ -1010,10 +1017,9 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     )
 
     dataset_eval.transform = create_transform_v2(
-        cfg=eval_pp_cfg, is_training=False,
+        cfg=eval_pp_cfg,
+        is_training=False,
         normalize=eval_pp_cfg.normalize and normalize_in_transform)
-    if not eval_pp_cfg.normalize:
-        dataset_eval.transform.transforms[-1] = transforms.ToTensor()
 
     eval_workers = args.workers
     if 'tfds' in args.dataset:
@@ -1023,7 +1029,9 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
         dataset_eval,
         batch_size=args.validation_batch_size or args.batch_size,
         is_training=False,
-        normalize_in_transform=not normalize_in_transform,
+        create_transform=False,
+        normalize_in_transform=eval_pp_cfg.normalize
+        and not normalize_in_transform,
         pp_cfg=eval_pp_cfg,
         num_workers=eval_workers,
         pin_memory=args.pin_mem,
@@ -1158,8 +1166,7 @@ def after_train_step(
                     epoch=state.epoch,
                     loss=loss_avg.item(),
                     rate=tracker.get_avg_iter_rate(global_batch_size),
-                    lr=lr_avg
-                )
+                    lr=lr_avg)
 
         if services.checkpoint is not None and cfg.recovery_interval and (
                 end_step or (step_idx + 1) % cfg.recovery_interval == 0):
@@ -1227,8 +1234,10 @@ def evaluate(model: nn.Module,
             tracker.mark_iter()
 
     top1, top5 = accuracy_m.compute().values()
-    results = OrderedDict([('loss', losses_m.compute().item()),
-                           ('top1', top1.item()), ])
+    results = OrderedDict([
+        ('loss', losses_m.compute().item()),
+        ('top1', top1.item()),
+    ])
     return results
 
 
