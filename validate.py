@@ -22,73 +22,209 @@ from timm.data import create_dataset, create_loader_v2, PreprocessCfg, RealLabel
     resolve_data_config
 from timm.models import apply_test_time_pool, create_model, is_model, list_models, load_checkpoint
 from timm.utils import natural_key, setup_default_logging
+from torchvision import transforms
+
+import attacks
+import utils
 
 _logger = logging.getLogger('validate')
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Validation')
-parser.add_argument('data', metavar='DIR',
-                    help='path to dataset')
-parser.add_argument('--dataset', '-d', metavar='NAME', default='',
-                    help='dataset type (default: ImageFolder/ImageTar if empty)')
-parser.add_argument('--split', metavar='NAME', default='validation',
+parser.add_argument('data', metavar='DIR', help='path to dataset')
+parser.add_argument(
+    '--dataset',
+    '-d',
+    metavar='NAME',
+    default='',
+    help='dataset type (default: ImageFolder/ImageTar if empty)')
+parser.add_argument('--split',
+                    metavar='NAME',
+                    default='validation',
                     help='dataset split (default: validation)')
-parser.add_argument('--dataset-download', action='store_true', default=False,
-                    help='Allow download of dataset for torch/ and tfds/ datasets that support it.')
-parser.add_argument('--model', '-m', metavar='NAME', default='resnet50',
+parser.add_argument(
+    '--dataset-download',
+    action='store_true',
+    default=False,
+    help=
+    'Allow download of dataset for torch/ and tfds/ datasets that support it.')
+parser.add_argument('--model',
+                    '-m',
+                    metavar='NAME',
+                    default='resnet50',
                     help='model architecture (default: resnet50)')
-parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
+parser.add_argument('-j',
+                    '--workers',
+                    default=4,
+                    type=int,
+                    metavar='N',
                     help='number of data loading workers (default: 2)')
-parser.add_argument('-b', '--batch-size', default=256, type=int,
-                    metavar='N', help='mini-batch size (default: 256)')
-parser.add_argument('--img-size', default=None, type=int,
-                    metavar='N', help='Input image dimension, uses model default if empty')
-parser.add_argument('--input-size', default=None, nargs=3, type=int,
-                    metavar='N N N',
-                    help='Input all image dimensions (d h w, e.g. --input-size 3 224 224), uses model default if empty')
-parser.add_argument('--crop-pct', default=None, type=float,
-                    metavar='N', help='Input image center crop pct')
-parser.add_argument('--mean', type=float, nargs='+', default=None, metavar='MEAN',
+parser.add_argument('-b',
+                    '--batch-size',
+                    default=256,
+                    type=int,
+                    metavar='N',
+                    help='mini-batch size (default: 256)')
+parser.add_argument('--img-size',
+                    default=None,
+                    type=int,
+                    metavar='N',
+                    help='Input image dimension, uses model default if empty')
+parser.add_argument(
+    '--input-size',
+    default=None,
+    nargs=3,
+    type=int,
+    metavar='N N N',
+    help=
+    'Input all image dimensions (d h w, e.g. --input-size 3 224 224), uses model default if empty'
+)
+parser.add_argument('--crop-pct',
+                    default=None,
+                    type=float,
+                    metavar='N',
+                    help='Input image center crop pct')
+parser.add_argument('--mean',
+                    type=float,
+                    nargs='+',
+                    default=None,
+                    metavar='MEAN',
                     help='Override mean pixel value of dataset')
-parser.add_argument('--std', type=float, nargs='+', default=None, metavar='STD',
+parser.add_argument('--std',
+                    type=float,
+                    nargs='+',
+                    default=None,
+                    metavar='STD',
                     help='Override std deviation of of dataset')
-parser.add_argument('--interpolation', default='', type=str, metavar='NAME',
+parser.add_argument('--interpolation',
+                    default='',
+                    type=str,
+                    metavar='NAME',
                     help='Image resize interpolation type (overrides model)')
-parser.add_argument('--num-classes', type=int, default=None,
+parser.add_argument(
+    '-nn',
+    '--no-normalize',
+    action='store_true',
+    default=True,
+    help='Avoids normalizing inputs (but it scales them in [0, 1]')
+parser.add_argument('--num-classes',
+                    type=int,
+                    default=None,
                     help='Number classes in dataset')
-parser.add_argument('--class-map', default='', type=str, metavar='FILENAME',
+parser.add_argument('--class-map',
+                    default='',
+                    type=str,
+                    metavar='FILENAME',
                     help='path to class to idx mapping file (default: "")')
-parser.add_argument('--gp', default=None, type=str, metavar='POOL',
-                    help='Global pool type, one of (fast, avg, max, avgmax, avgmaxc). Model default if None.')
-parser.add_argument('--log-freq', default=20, type=int,
-                    metavar='N', help='batch logging frequency (default: 10)')
-parser.add_argument('--checkpoint', default='', type=str, metavar='PATH',
+parser.add_argument(
+    '--gp',
+    default=None,
+    type=str,
+    metavar='POOL',
+    help=
+    'Global pool type, one of (fast, avg, max, avgmax, avgmaxc). Model default if None.'
+)
+parser.add_argument('--log-freq',
+                    default=20,
+                    type=int,
+                    metavar='N',
+                    help='batch logging frequency (default: 10)')
+parser.add_argument('--checkpoint',
+                    default='',
+                    type=str,
+                    metavar='PATH',
                     help='path to latest checkpoint (default: none)')
-parser.add_argument('--pretrained', dest='pretrained', action='store_true',
+parser.add_argument('--pretrained',
+                    dest='pretrained',
+                    action='store_true',
                     help='use pre-trained model')
 # parser.add_argument('--num-gpu', type=int, default=1,
 #                     help='Number of GPUS to use')
-parser.add_argument('--test-pool', dest='test_pool', action='store_true',
+parser.add_argument('--test-pool',
+                    dest='test_pool',
+                    action='store_true',
                     help='enable test time pool')
-parser.add_argument('--pin-mem', action='store_true', default=False,
-                    help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
-parser.add_argument('--channels-last', action='store_true', default=False,
+parser.add_argument(
+    '--pin-mem',
+    action='store_true',
+    default=False,
+    help=
+    'Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.'
+)
+parser.add_argument('--channels-last',
+                    action='store_true',
+                    default=False,
                     help='Use channels_last memory layout')
-parser.add_argument('--amp', action='store_true', default=False,
-                    help='Use AMP mixed precision. Defaults to Apex, fallback to native Torch AMP.')
-parser.add_argument('--tf-preprocessing', action='store_true', default=False,
-                    help='Use Tensorflow preprocessing pipeline (require CPU TF installed')
-parser.add_argument('--use-ema', dest='use_ema', action='store_true',
+parser.add_argument(
+    '--amp',
+    action='store_true',
+    default=False,
+    help=
+    'Use AMP mixed precision. Defaults to Apex, fallback to native Torch AMP.')
+parser.add_argument(
+    '--tf-preprocessing',
+    action='store_true',
+    default=False,
+    help='Use Tensorflow preprocessing pipeline (require CPU TF installed')
+parser.add_argument('--use-ema',
+                    dest='use_ema',
+                    action='store_true',
                     help='use ema version of weights if present')
-parser.add_argument('--torchscript', dest='torchscript', action='store_true',
+parser.add_argument('--torchscript',
+                    dest='torchscript',
+                    action='store_true',
                     help='convert model torchscript for inference')
-parser.add_argument('--results-file', default='', type=str, metavar='FILENAME',
+parser.add_argument('--results-file',
+                    default='',
+                    type=str,
+                    metavar='FILENAME',
                     help='Output csv file for validation results (summary)')
-parser.add_argument('--real-labels', default='', type=str, metavar='FILENAME',
+parser.add_argument('--real-labels',
+                    default='',
+                    type=str,
+                    metavar='FILENAME',
                     help='Real labels JSON file for imagenet evaluation')
-parser.add_argument('--valid-labels', default='', type=str, metavar='FILENAME',
-                    help='Valid label indices txt file for validation of partial label space')
-parser.add_argument('--force-cpu', action='store_true', default=False,
+parser.add_argument(
+    '--valid-labels',
+    default='',
+    type=str,
+    metavar='FILENAME',
+    help='Valid label indices txt file for validation of partial label space')
+parser.add_argument('--force-cpu',
+                    action='store_true',
+                    default=False,
                     help='Force CPU to be used even if HW accelerator exists.')
+
+parser.add_argument('--attack',
+                    default='pgd',
+                    type=str,
+                    metavar='ATTACK',
+                    help='What attack to use (default: "pgd")')
+parser.add_argument('--attack-eps',
+                    default=4 / 255,
+                    type=float,
+                    metavar='EPS',
+                    help='The epsilon to use for the attack (default 8/255)')
+parser.add_argument('--attack-lr',
+                    default=1 / 255,
+                    type=float,
+                    metavar='ATTACK_LR',
+                    help='Learning rate for the attack (default 1e-4)')
+parser.add_argument('--attack-steps',
+                    default=10,
+                    type=int,
+                    metavar='ATTACK_STEPS',
+                    help='Number of steps to run attack for (default 10)')
+parser.add_argument('--attack-norm',
+                    default='linf',
+                    type=str,
+                    metavar='NORM',
+                    help='The norm to use for the attack (default linf)')
+parser.add_argument('--attack-boundaries',
+                    default=(0, 1),
+                    nargs=2,
+                    type=int,
+                    metavar='L H',
+                    help='Boundaries of projection')
 
 
 def validate(args):
@@ -98,28 +234,35 @@ def validate(args):
     dev_env = initialize_device(force_cpu=args.force_cpu, amp=args.amp)
 
     # create model
-    model = create_model(
-        args.model,
-        pretrained=args.pretrained,
-        num_classes=args.num_classes,
-        in_chans=3,
-        global_pool=args.gp,
-        scriptable=args.torchscript)
+    model = create_model(args.model,
+                         pretrained=args.pretrained,
+                         num_classes=args.num_classes,
+                         in_chans=3,
+                         global_pool=args.gp,
+                         scriptable=args.torchscript)
     if args.num_classes is None:
-        assert hasattr(model,
-                       'num_classes'), 'Model must have `num_classes` attr if not set on cmd line/config.'
+        assert hasattr(
+            model, 'num_classes'
+        ), 'Model must have `num_classes` attr if not set on cmd line/config.'
         args.num_classes = model.num_classes
 
     if args.checkpoint:
         load_checkpoint(model, args.checkpoint, args.use_ema)
 
     param_count = sum([m.numel() for m in model.parameters()])
-    _logger.info('Model %s created, param count: %d' % (args.model, param_count))
+    _logger.info('Model %s created, param count: %d' %
+                 (args.model, param_count))
 
-    data_config = resolve_data_config(vars(args), model=model, use_test_size=True, verbose=True)
+    data_config = resolve_data_config(vars(args),
+                                      model=model,
+                                      use_test_size=True,
+                                      verbose=True)
     test_time_pool = False
     if args.test_pool:
-        model, test_time_pool = apply_test_time_pool(model, data_config, use_test_size=True)
+        model, test_time_pool = apply_test_time_pool(model,
+                                                     data_config,
+                                                     use_test_size=True)
+    data_config['normalize'] = not args.no_normalize
 
     if args.torchscript:
         torch.jit.optimized_execution(True)
@@ -129,9 +272,12 @@ def validate(args):
     model, criterion = dev_env.to_device(model, nn.CrossEntropyLoss())
     model.to(dev_env.device)
 
-    dataset = create_dataset(
-        root=args.data, name=args.dataset, split=args.split,
-        download=args.dataset_download, load_bytes=args.tf_preprocessing, class_map=args.class_map)
+    dataset = create_dataset(root=args.data,
+                             name=args.dataset,
+                             split=args.split,
+                             download=args.dataset_download,
+                             load_bytes=args.tf_preprocessing,
+                             class_map=args.class_map)
 
     if args.valid_labels:
         with open(args.valid_labels, 'r') as f:
@@ -146,26 +292,35 @@ def validate(args):
     else:
         real_labels = None
 
-    eval_pp_cfg = PreprocessCfg(
+    eval_pp_cfg = utils.MyPreprocessCfg(
         input_size=data_config['input_size'],
         interpolation=data_config['interpolation'],
-        crop_pct=1.0 if test_time_pool else data_config['crop_pct'],
+        crop_pct=data_config['crop_pct'],
         mean=data_config['mean'],
         std=data_config['std'],
+        normalize=data_config['normalize'],
     )
 
-    loader = create_loader_v2(
-        dataset,
-        batch_size=args.batch_size,
-        is_training=False,
-        pp_cfg=eval_pp_cfg,
-        num_workers=args.workers,
-        pin_memory=args.pin_mem)
+    loader = create_loader_v2(dataset,
+                              batch_size=args.batch_size,
+                              is_training=False,
+                              pp_cfg=eval_pp_cfg,
+                              num_workers=args.workers,
+                              pin_memory=args.pin_mem)
+
+    if not eval_pp_cfg.normalize:
+        loader.dataset.transform.transforms[-1] = transforms.ToTensor()
 
     logger = Monitor(logger=_logger)
     tracker = Tracker()
     losses = AvgTensor()
+    adv_losses = AvgTensor()
     accuracy = AccuracyTopK(dev_env=dev_env)
+    adv_accuracy = AccuracyTopK(dev_env=dev_env)
+
+    attack = attacks.make_attack(args.attack, args.attack_eps, args.attack_lr,
+                                 args.attack_steps, args.attack_norm,
+                                 args.attack_boundaries, criterion)
 
     model.eval()
     num_steps = len(loader)
@@ -176,10 +331,14 @@ def validate(args):
             tracker.mark_iter_data_end()
 
             with dev_env.autocast():
+                adv_sample = attack(model, sample, target)
                 output = model(sample)
+                adv_output = model(adv_sample)
+
             if valid_labels is not None:
                 output = output[:, valid_labels]
             loss = criterion(output, target)
+            adv_loss = criterion(adv_output, target)
 
             if dev_env.type_xla:
                 dev_env.mark_step()
@@ -192,9 +351,13 @@ def validate(args):
             losses.update(loss.detach(), sample.size(0))
             accuracy.update(output.detach(), target)
 
+            adv_losses.update(adv_loss.detach(), sample.size(0))
+            adv_accuracy.update(adv_output.detach(), target)
+
             tracker.mark_iter()
             if last_step or step_idx % args.log_freq == 0:
                 top1, top5 = accuracy.compute().values()
+                adv_top1, adv_top5 = adv_accuracy.compute().values()
                 loss_avg = losses.compute()
                 logger.log_step(
                     phase='eval',
@@ -205,23 +368,40 @@ def validate(args):
                     loss=loss_avg.item(),
                     top1=top1.item(),
                     top5=top5.item(),
+                    adv_top1=adv_top1.item(),
+                    adv_top5=adv_top5.item(),
                 )
 
     if real_labels is not None:
         # real labels mode replaces topk values at the end
-        top1a, top5a = real_labels.get_accuracy(k=1), real_labels.get_accuracy(k=5)
+        top1a, top5a = real_labels.get_accuracy(k=1), real_labels.get_accuracy(
+            k=5)
     else:
         top1a, top5a = accuracy.compute().values()
         top1a, top5a = top1a.item(), top5a.item()
+        adv_top1a, adv_top5a = adv_accuracy.compute().values()
+        adv_top1a, adv_top5a = adv_top1a.item(), adv_top5a.item()
 
-    results = OrderedDict(
-        top1=round(top1a, 4), top1_err=round(100 - top1a, 4),
-        top5=round(top5a, 4), top5_err=round(100 - top5a, 4),
-        param_count=round(param_count / 1e6, 2),
-        img_size=data_config['input_size'][-1],
-        cropt_pct=eval_pp_cfg.crop_pct,
-        interpolation=data_config['interpolation'])
-    logger.log_phase(phase='eval', name_map={'top1': 'Acc@1', 'top5': 'Acc@5'}, **results)
+    results = OrderedDict(top1=round(top1a, 4),
+                          top1_err=round(100 - top1a, 4),
+                          top5=round(top5a, 4),
+                          top5_err=round(100 - top5a, 4),
+                          adv_top1=round(adv_top1a, 4),
+                          adv_top1_err=round(100 - adv_top1a, 4),
+                          adv_top5=round(adv_top5a, 4),
+                          adv_top5_err=round(100 - adv_top5a, 4),
+                          param_count=round(param_count / 1e6, 2),
+                          img_size=data_config['input_size'][-1],
+                          cropt_pct=eval_pp_cfg.crop_pct,
+                          interpolation=data_config['interpolation'])
+    logger.log_phase(phase='eval',
+                     name_map={
+                         'top1': 'Acc@1',
+                         'top5': 'Acc@5',
+                         'adv_top1': 'AdvAcc@1',
+                         'adv_top5': 'AdvAcc@5',
+                     },
+                     **results)
 
     return results
 
@@ -236,12 +416,14 @@ def main():
         checkpoints = glob.glob(args.checkpoint + '/*.pth.tar')
         checkpoints += glob.glob(args.checkpoint + '/*.pth')
         model_names = list_models(args.model)
-        model_cfgs = [(args.model, c) for c in sorted(checkpoints, key=natural_key)]
+        model_cfgs = [(args.model, c)
+                      for c in sorted(checkpoints, key=natural_key)]
     else:
         if args.model == 'all':
             # validate all models in a list of names with pretrained checkpoints
             args.pretrained = True
-            model_names = list_models(pretrained=True, exclude_filters=['*_in21k', '*_in22k'])
+            model_names = list_models(pretrained=True,
+                                      exclude_filters=['*_in21k', '*_in22k'])
             model_cfgs = [(n, '') for n in model_names]
         elif not is_model(args.model):
             # model name doesn't exist, try as wildcard filter
@@ -256,7 +438,8 @@ def main():
     if len(model_cfgs):
         results_file = args.results_file or './results-all.csv'
         _logger.info(
-            'Running bulk validation on these pretrained models: {}'.format(', '.join(model_names)))
+            'Running bulk validation on these pretrained models: {}'.format(
+                ', '.join(model_names)))
         results = []
         try:
             start_batch_size = args.batch_size
@@ -269,12 +452,14 @@ def main():
                 while not r and batch_size >= 1:
                     try:
                         args.batch_size = batch_size
-                        print('Validating with batch size: %d' % args.batch_size)
+                        print('Validating with batch size: %d' %
+                              args.batch_size)
                         r = validate(args)
                     except RuntimeError as e:
                         if batch_size <= args.num_gpu:
                             print(
-                                "Validation failed with no ability to reduce batch size. Exiting.")
+                                "Validation failed with no ability to reduce batch size. Exiting."
+                            )
                             raise e
                         batch_size = max(batch_size // 2, args.num_gpu)
                         print("Validation failed, reducing batch size by 50%")
