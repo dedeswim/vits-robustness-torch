@@ -29,12 +29,13 @@ from timm.bits import AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv, dis
     initialize_device, Monitor, setup_model_and_optimizer, Tracker, TrainCfg, TrainServices, \
     TrainState
 from timm.data import AugCfg, AugMixDataset, create_loader_v2, create_transform_v2, MixupCfg, \
-    PreprocessCfg, resolve_data_config
+    resolve_data_config
 from timm.loss import *
 from timm.models import convert_splitbn_model, create_model, safe_model_name
 from timm.optim import optimizer_kwargs
 from timm.scheduler import create_scheduler
 from timm.utils import get_outdir, random_seed, setup_default_logging, unwrap_model
+from torchvision import transforms
 
 import attacks
 import utils
@@ -161,6 +162,11 @@ parser.add_argument('-vb',
                     default=None,
                     metavar='N',
                     help='validation batch size override (default: None)')
+parser.add_argument('-nn',
+                    '--no-normalize',
+                    action='store_true',
+                    default=True,
+                    help='Avoids normalizing inputs (but it scales them in [0, 1]')
 
 # Optimizer parameters
 parser.add_argument('--opt',
@@ -909,6 +915,7 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     data_config = resolve_data_config(vars(args),
                                       default_cfg=default_cfg,
                                       verbose=dev_env.primary)
+    data_config['normalize'] = not args.no_normalize
 
     # create the train and eval datasets
     dataset_train = utils.my_create_dataset(args.dataset,
@@ -962,42 +969,51 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
             num_aug_splits=args.aug_splits,
         )
 
-    train_pp_cfg = PreprocessCfg(
+    train_pp_cfg = utils.MyPreprocessCfg(
         input_size=data_config['input_size'],
         interpolation=train_interpolation,
         crop_pct=data_config['crop_pct'],
         mean=data_config['mean'],
         std=data_config['std'],
         aug=train_aug_cfg,
+        normalize=data_config['normalize'],
     )
 
     # if using PyTorch XLA and RandomErasing is enabled, we must normalize and do RE in transforms on CPU
-    normalize_in_transform = dev_env.type_xla and args.reprob > 0
+    normalize_in_transform = dev_env.type_xla and args.reprob > 0 and train_pp_cfg.normalize
+    _logger.info(f"{train_pp_cfg.normalize=}, {normalize_in_transform=}")
 
     dataset_train.transform = create_transform_v2(
-        cfg=train_pp_cfg, is_training=True, normalize=normalize_in_transform)
+        cfg=train_pp_cfg, is_training=True,
+        normalize=train_pp_cfg.normalize and normalize_in_transform)
+    if not train_pp_cfg.normalize:
+        dataset_train.transform.transforms[-1] = transforms.ToTensor()
 
     loader_train = create_loader_v2(
         dataset_train,
         batch_size=args.batch_size,
         is_training=True,
-        normalize=not normalize_in_transform,
+        normalize_in_transform=not normalize_in_transform,
         pp_cfg=train_pp_cfg,
         mix_cfg=mixup_cfg,
         num_workers=args.workers,
         pin_memory=args.pin_mem,
         use_multi_epochs_loader=args.use_multi_epochs_loader)
 
-    eval_pp_cfg = PreprocessCfg(
+    eval_pp_cfg = utils.MyPreprocessCfg(
         input_size=data_config['input_size'],
         interpolation=data_config['interpolation'],
         crop_pct=data_config['crop_pct'],
         mean=data_config['mean'],
         std=data_config['std'],
+        normalize=data_config['normalize'],
     )
 
     dataset_eval.transform = create_transform_v2(
-        cfg=eval_pp_cfg, is_training=False, normalize=normalize_in_transform)
+        cfg=eval_pp_cfg, is_training=False,
+        normalize=eval_pp_cfg.normalize and normalize_in_transform)
+    if not eval_pp_cfg.normalize:
+        dataset_eval.transform.transforms[-1] = transforms.ToTensor()
 
     eval_workers = args.workers
     if 'tfds' in args.dataset:
@@ -1007,7 +1023,7 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
         dataset_eval,
         batch_size=args.validation_batch_size or args.batch_size,
         is_training=False,
-        normalize=not normalize_in_transform,
+        normalize_in_transform=not normalize_in_transform,
         pp_cfg=eval_pp_cfg,
         num_workers=eval_workers,
         pin_memory=args.pin_mem,
@@ -1034,6 +1050,8 @@ def train_one_epoch(
     tracker.mark_iter()
     for step_idx, (sample, target) in enumerate(loader):
         tracker.mark_iter_data_end()
+
+        _logger.info(f"{sample.min()=}, {sample.max()=}")
 
         # FIXME move forward + loss into model 'task' wrapper
         with dev_env.autocast():

@@ -3,6 +3,7 @@ from typing import Callable, Optional, Tuple
 
 import torch
 from timm import bits
+from timm.data import PreprocessCfg
 from timm.data.dataset_factory import create_dataset
 from torch import nn
 from torchvision import datasets
@@ -58,3 +59,9 @@ class AdvTrainState(bits.TrainState):
                    step_count=instance.step_count,
                    step_count_global=instance.step_count_global,
                    **kwargs)
+
+
+
+@dataclasses.dataclass
+class MyPreprocessCfg(PreprocessCfg):
+    normalize: bool = True
