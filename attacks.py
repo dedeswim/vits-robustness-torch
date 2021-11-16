@@ -1,8 +1,9 @@
 import functools
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
+from autoattack import AutoAttack
 from torch import nn
 
 AttackFn = Callable[[nn.Module, torch.Tensor, torch.Tensor], torch.Tensor]
@@ -23,8 +24,8 @@ def project_linf(x: torch.Tensor, x_adv: torch.Tensor, eps: float,
 
 def init_linf(x: torch.Tensor, eps: float, project_fn: ProjectFn,
               boundaries: Boundaries) -> torch.Tensor:
-    x_adv = x.detach() + 0.001 * torch.rand_like(
-        x.detach(), device=x.device) + 1e-5
+    x_adv = x.detach() + 0.001 * torch.rand_like(x.detach(),
+                                                 device=x.device) + 1e-5
     return project_fn(x, x_adv, eps, boundaries)
 
 
@@ -55,19 +56,36 @@ _INIT_PROJECT_FN: Dict[str, Tuple[InitFn, ProjectFn]] = {
 }
 
 
-def make_attack(attack: str, eps: float, step_size: float, steps: int,
-                norm: Norm, boundaries: Tuple[float, float],
-                criterion: nn.Module) -> AttackFn:
-    attack_fn = _ATTACKS[attack]
-    init_fn, project_fn = _INIT_PROJECT_FN[norm]
-    return functools.partial(attack_fn,
-                             eps=eps,
-                             step_size=step_size,
-                             steps=steps,
-                             boundaries=boundaries,
-                             init_fn=init_fn,
-                             project_fn=project_fn,
-                             criterion=criterion)
+def make_attack(attack: str,
+                eps: float,
+                step_size: float,
+                steps: int,
+                norm: Norm,
+                boundaries: Tuple[float, float],
+                criterion: nn.Module,
+                device: Optional[torch.device] = None) -> AttackFn:
+    if attack != "autoattack":
+        attack_fn = _ATTACKS[attack]
+        init_fn, project_fn = _INIT_PROJECT_FN[norm]
+        return functools.partial(attack_fn,
+                                 eps=eps,
+                                 step_size=step_size,
+                                 steps=steps,
+                                 boundaries=boundaries,
+                                 init_fn=init_fn,
+                                 project_fn=project_fn,
+                                 criterion=criterion)
+
+    def autoattack_fn(model: nn.Module, x: torch.Tensor,
+                      y: torch.Tensor) -> torch.Tensor:
+        adversary = AutoAttack(model,
+                               norm.capitalize(),
+                               eps=eps,
+                               device=device)
+        x_adv = adversary.run_standard_evaluation(x, y, bs=x.size(0))
+        return x_adv  # type: ignore
+
+    return autoattack_fn
 
 
 class TRADESLoss(nn.Module):

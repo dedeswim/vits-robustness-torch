@@ -15,8 +15,10 @@ import os
 from collections import OrderedDict
 
 import torch
+from torch._C import device
 import torch.nn as nn
 import torch.nn.parallel
+from autoattack import AutoAttack
 from timm.bits import AccuracyTopK, AvgTensor, initialize_device, Monitor, Tracker
 from timm.data import create_dataset, create_loader_v2, PreprocessCfg, RealLabelsImagenet, \
     resolve_data_config
@@ -331,14 +333,16 @@ def validate(args):
             tracker.mark_iter_data_end()
 
             with dev_env.autocast():
-                adv_sample = attack(model, sample, target)
+                model.train()
+                with torch.enable_grad():
+                    adv_sample = attack(model, sample, target)
+                model.eval()
                 output = model(sample)
                 adv_output = model(adv_sample)
 
             if valid_labels is not None:
                 output = output[:, valid_labels]
             loss = criterion(output, target)
-            adv_loss = criterion(adv_output, target)
 
             if dev_env.type_xla:
                 dev_env.mark_step()
@@ -351,7 +355,6 @@ def validate(args):
             losses.update(loss.detach(), sample.size(0))
             accuracy.update(output.detach(), target)
 
-            adv_losses.update(adv_loss.detach(), sample.size(0))
             adv_accuracy.update(adv_output.detach(), target)
 
             tracker.mark_iter()
