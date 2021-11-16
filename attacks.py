@@ -24,8 +24,8 @@ def project_linf(x: torch.Tensor, x_adv: torch.Tensor, eps: float,
 
 def init_linf(x: torch.Tensor, eps: float, project_fn: ProjectFn,
               boundaries: Boundaries) -> torch.Tensor:
-    x_adv = x.detach() + 0.001 * torch.rand_like(x.detach(),
-                                                 device=x.device) + 1e-5
+    x_adv = x_adv = x.detach() + torch.zeros_like(
+        x.detach(), device=x.device).uniform_(-eps, eps) + 1e-5
     return project_fn(x, x_adv, eps, boundaries)
 
 
