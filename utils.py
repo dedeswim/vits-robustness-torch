@@ -15,6 +15,7 @@ _DATASETS = {'cifar10': datasets.CIFAR10, 'cifar100': datasets.CIFAR100}
 
 
 def get_outdir(path: str, *paths: str, inc=False) -> str:
+    """Adapted to get out dir from GCS"""
     outdir = os.path.join(path, *paths)
     if path.startswith('gs://'):
         os_module = gfile
@@ -53,6 +54,7 @@ def save_train_state(checkpoint_path: str,
                      unwrap_fn: Callable = unwrap_model,
                      dev_env: bits.DeviceEnv = None,
                      log_info: bool = True):
+    """Adapted to save on GCS"""
 
     assert not train_state.updater.deepspeed
 
@@ -72,7 +74,7 @@ def save_train_state(checkpoint_path: str,
 
 
 class GCSSummaryCsv(bits.monitor.SummaryCsv):
-    """SummaryCSV version to work with GCloud Storage"""
+    """SummaryCSV version to work with GCS"""
     def __init__(self, output_dir, filename='summary.csv'):
         super().__init__(output_dir, filename)
 

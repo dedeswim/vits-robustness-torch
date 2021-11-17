@@ -698,7 +698,7 @@ def main():
                 safe_model_name(args.model),
                 str(data_config['input_size'][-1])
             ])
-        output_dir = get_outdir(
+        output_dir = utils.get_outdir(
             args.output if args.output else './output/train',
             exp_name,
             inc=True)
