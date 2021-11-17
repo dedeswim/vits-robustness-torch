@@ -1,7 +1,10 @@
+import csv
 import dataclasses
-from typing import Callable, Optional, Tuple
+import os
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import torch
+from tensorflow.io import gfile  # flake8: disable=import-error
 from timm import bits
 from timm.data import PreprocessCfg
 from timm.data.dataset_factory import create_dataset
@@ -9,6 +12,77 @@ from torch import nn
 from torchvision import datasets
 
 _DATASETS = {'cifar10': datasets.CIFAR10, 'cifar100': datasets.CIFAR100}
+
+
+def get_outdir(path: str, *paths: str, inc=False) -> str:
+    outdir = os.path.join(path, *paths)
+    if path.startswith('gs://'):
+        os_module = gfile
+        exists_fn = lambda x: os_module.exists(x)
+    else:
+        os_module = os
+        exists_fn = os.path.exists
+    if not exists_fn(outdir):
+        os_module.makedirs(outdir)
+    elif inc:
+        count = 1
+        outdir_inc = outdir + '-' + str(count)
+        while exists_fn(outdir_inc):
+            count = count + 1
+            outdir_inc = outdir + '-' + str(count)
+            assert count < 100
+        outdir = outdir_inc
+        os_module.makedirs(outdir)
+    return outdir
+
+
+_SUB_MODULE_ATTR = ('module', 'model')
+
+
+def unwrap_model(model, recursive=True):
+    for attr in _SUB_MODULE_ATTR:
+        sub_module = getattr(model, attr, None)
+        if sub_module is not None:
+            return unwrap_model(sub_module) if recursive else sub_module
+    return model
+
+
+def save_train_state(checkpoint_path: str,
+                     train_state: bits.TrainState,
+                     extra_state: Dict[str, Any] = None,
+                     unwrap_fn: Callable = unwrap_model,
+                     dev_env: bits.DeviceEnv = None,
+                     log_info: bool = True):
+
+    assert not train_state.updater.deepspeed
+
+    dev_env = dev_env or bits.DeviceEnv.instance()
+    state_dict = train_state.state_dict(unwrap_fn=unwrap_fn)
+    if extra_state:
+        state_dict.update(extra_state)
+    if dev_env.type_xla:
+        # XLA state dict needs to be moved to CPU before save, this is normally done by xm.save
+        state_dict = dev_env.state_dict_to_cpu(state_dict)
+
+    if checkpoint_path.startswith('gs://'):
+        with gfile.GFile(checkpoint_path, 'wb') as f:
+            torch.save(state_dict, f)
+    else:
+        torch.save(state_dict, checkpoint_path)
+
+
+class GCSSummaryCsv(bits.monitor.SummaryCsv):
+    """SummaryCSV version to work with GCloud Storage"""
+    def __init__(self, output_dir, filename='summary.csv'):
+        super().__init__(output_dir, filename)
+
+    def update(self, row_dict):
+        with gfile.GFile(self.filename, mode='a') as cf:
+            dw = csv.DictWriter(cf, fieldnames=row_dict.keys())
+            if self.needs_header:  # first iteration (epoch == 1 can't be used)
+                dw.writeheader()
+                self.needs_header = False
+            dw.writerow(row_dict)
 
 
 def my_create_dataset(name: str,
@@ -59,7 +133,6 @@ class AdvTrainState(bits.TrainState):
                    step_count=instance.step_count,
                    step_count_global=instance.step_count_global,
                    **kwargs)
-
 
 
 @dataclasses.dataclass

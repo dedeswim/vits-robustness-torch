@@ -25,6 +25,7 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 import yaml
+from tensorflow.io import gfile
 from timm.bits import AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv, distribute_bn, \
     initialize_device, Monitor, setup_model_and_optimizer, Tracker, TrainCfg, TrainServices, \
     TrainState
@@ -704,12 +705,18 @@ def main():
         checkpoint_manager = CheckpointManager(
             hparams=vars(args),
             checkpoint_dir=output_dir,
+            save_state_fn=utils.save_train_state,
             recovery_dir=output_dir,
             metric_name=eval_metric,
             metric_decreasing=True if eval_metric == 'loss' else False,
             max_history=args.checkpoint_hist)
-        with open(os.path.join(output_dir, 'args.yaml'), 'w') as f:
-            f.write(args_text)
+        
+        if output_dir.startswith("gs://"):
+            with gfile.GFile(os.path.join(output_dir, 'args.yaml'), 'w') as f:
+                f.write(args_text)
+        else:
+            with open(os.path.join(output_dir, 'args.yaml'), 'w') as f:
+                f.write(args_text)
 
     services = TrainServices(
         monitor=Monitor(output_dir=output_dir,
@@ -720,6 +727,10 @@ def main():
                         log_wandb=args.log_wandb and dev_env.primary),
         checkpoint=checkpoint_manager,
     )
+
+    if output_dir is not None and output_dir.startswith('gs://'):
+        services.monitor.csv_writer = utils.GCSSummaryCsv(
+            output_dir=output_dir)
 
     _logger.info('Starting training, the first steps may take a long time')
 
