@@ -28,7 +28,7 @@ import yaml
 from timm.bits import AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv, distribute_bn, \
     initialize_device, Monitor, setup_model_and_optimizer, Tracker, TrainCfg, TrainServices, \
     TrainState
-from timm.data import AugCfg, AugMixDataset, create_loader_v2, create_transform_v2, MixupCfg, \
+from timm.data import AugCfg, AugMixDataset, create_loader_v2, MixupCfg, \
     resolve_data_config
 from timm.loss import *
 from timm.models import convert_splitbn_model, create_model, safe_model_name
