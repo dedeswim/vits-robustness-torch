@@ -719,6 +719,13 @@ def main():
             metric_decreasing=True if eval_metric == 'loss' else False,
             max_history=args.checkpoint_hist)
 
+        if output_dir.startswith("gs://"):
+            with gfile.GFile(os.path.join(output_dir, 'args.yaml'), 'w') as f:
+                f.write(args_text)
+        else:
+            with open(os.path.join(output_dir, 'args.yaml'), 'w') as f:
+                f.write(args_text)
+
     services = TrainServices(
         monitor=Monitor(output_dir=output_dir,
                         logger=_logger,
