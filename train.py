@@ -15,6 +15,7 @@ NVIDIA CUDA specific speedups adopted from NVIDIA Apex examples
 Hacked together by / Copyright 2020 Ross Wightman (https://github.com/rwightman)
 """
 import argparse
+import glob
 import logging
 import os
 from collections import OrderedDict
@@ -22,6 +23,7 @@ from dataclasses import replace
 from datetime import datetime
 from typing import Optional, Tuple
 
+import tempfile
 import torch
 import torch.nn as nn
 import yaml
@@ -689,6 +691,7 @@ def main():
     best_epoch = None
     checkpoint_manager = None
     output_dir = None
+    checkpoints_dir = None
     if dev_env.primary:
         if args.experiment:
             exp_name = args.experiment
@@ -702,21 +705,19 @@ def main():
             args.output if args.output else './output/train',
             exp_name,
             inc=True)
+        if output_dir.startswith("gs://"):
+            checkpoints_dir = tempfile.mkdtemp()
+            _logger.info(
+                f"Temporarily saving checkpoints in {checkpoints_dir}")
+        else:
+            checkpoints_dir = output_dir
         checkpoint_manager = CheckpointManager(
             hparams=vars(args),
-            checkpoint_dir=output_dir,
-            save_state_fn=utils.save_train_state,
+            checkpoint_dir=checkpoints_dir,
             recovery_dir=output_dir,
             metric_name=eval_metric,
             metric_decreasing=True if eval_metric == 'loss' else False,
             max_history=args.checkpoint_hist)
-        
-        if output_dir.startswith("gs://"):
-            with gfile.GFile(os.path.join(output_dir, 'args.yaml'), 'w') as f:
-                f.write(args_text)
-        else:
-            with open(os.path.join(output_dir, 'args.yaml'), 'w') as f:
-                f.write(args_text)
 
     services = TrainServices(
         monitor=Monitor(output_dir=output_dir,
@@ -799,8 +800,14 @@ def main():
         _logger.info('*** Best metric: {0} (epoch {1})'.format(
             best_metric, best_epoch))
 
+    if dev_env.primary and output_dir is not None and output_dir.startswith(
+            'gs://'):
+        assert checkpoints_dir is not None
+        utils.upload_checkpoints_gcs(checkpoints_dir, output_dir, _logger)
+
     if services.monitor.wandb_run is not None:
         import wandb
+        assert output_dir is not None
         artifact = wandb.Artifact('checkpoints', type='model')
         artifact.add_file(os.path.join(output_dir, "best.pth.tar"))
         artifact.add_file(os.path.join(output_dir, "last.pth.tar"))

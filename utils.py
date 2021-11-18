@@ -1,8 +1,9 @@
 import csv
 import dataclasses
 import os
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
+import glob
 import torch
 from tensorflow.io import gfile  # flake8: disable=import-error
 from timm import bits
@@ -37,40 +38,17 @@ def get_outdir(path: str, *paths: str, inc=False) -> str:
     return outdir
 
 
-_SUB_MODULE_ATTR = ('module', 'model')
-
-
-def unwrap_model(model, recursive=True):
-    for attr in _SUB_MODULE_ATTR:
-        sub_module = getattr(model, attr, None)
-        if sub_module is not None:
-            return unwrap_model(sub_module) if recursive else sub_module
-    return model
-
-
-def save_train_state(checkpoint_path: str,
-                     train_state: bits.TrainState,
-                     extra_state: Dict[str, Any] = None,
-                     unwrap_fn: Callable = unwrap_model,
-                     dev_env: bits.DeviceEnv = None,
-                     log_info: bool = True):
-    """Adapted to save on GCS"""
-
-    assert not train_state.updater.deepspeed
-
-    dev_env = dev_env or bits.DeviceEnv.instance()
-    state_dict = train_state.state_dict(unwrap_fn=unwrap_fn)
-    if extra_state:
-        state_dict.update(extra_state)
-    if dev_env.type_xla:
-        # XLA state dict needs to be moved to CPU before save, this is normally done by xm.save
-        state_dict = dev_env.state_dict_to_cpu(state_dict)
-
-    if checkpoint_path.startswith('gs://'):
-        with gfile.GFile(checkpoint_path, 'wb') as f:
-            torch.save(state_dict, f)
-    else:
-        torch.save(state_dict, checkpoint_path)
+def upload_checkpoints_gcs(checkpoints_dir: str, output_dir: str, logger):
+    checkpoints_paths = glob.glob(
+        os.path.join(checkpoints_dir, '*.pth.tar'))
+    logger.info(
+        f"Uploading {len(checkpoints_paths)} checkpoints to {output_dir}")
+    for checkpoint in checkpoints_paths:
+        gcs_checkpoint_path = os.path.join(output_dir,
+                                            os.path.basename(checkpoint))
+        gfile.copy(checkpoint, gcs_checkpoint_path)
+    logger.info(
+        f"Uploaded {len(checkpoints_paths)} checkpoints to {output_dir}")
 
 
 class GCSSummaryCsv(bits.monitor.SummaryCsv):
