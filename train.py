@@ -18,26 +18,28 @@ import argparse
 import glob
 import logging
 import os
+import tempfile
 from collections import OrderedDict
 from dataclasses import replace
 from datetime import datetime
 from typing import Optional, Tuple
 
-import tempfile
 import torch
 import torch.nn as nn
 import yaml
 from tensorflow.io import gfile
-from timm.bits import AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv, distribute_bn, \
-    initialize_device, Monitor, setup_model_and_optimizer, Tracker, TrainCfg, TrainServices, \
-    TrainState
-from timm.data import AugCfg, AugMixDataset, create_loader_v2, MixupCfg, \
-    resolve_data_config
+from timm.bits import (AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv,
+                       Monitor, Tracker, TrainCfg, TrainServices, TrainState,
+                       distribute_bn, initialize_device, monitor,
+                       setup_model_and_optimizer)
+from timm.data import (AugCfg, AugMixDataset, MixupCfg, create_loader_v2,
+                       resolve_data_config)
 from timm.loss import *
 from timm.models import convert_splitbn_model, create_model, safe_model_name
 from timm.optim import optimizer_kwargs
 from timm.scheduler import create_scheduler
-from timm.utils import get_outdir, random_seed, setup_default_logging, unwrap_model
+from timm.utils import (get_outdir, random_seed, setup_default_logging,
+                        unwrap_model)
 from torchvision import transforms
 
 import attacks
@@ -596,6 +598,10 @@ parser.add_argument('--log-wandb',
                     action='store_true',
                     default=False,
                     help='log training and validation metrics to wandb')
+parser.add_argument('--run-notes',
+                    default='',
+                    type=str,
+                    help='Description about this run')
 
 # Adversarial training arguments
 # Args for adversarial training:
@@ -733,8 +739,22 @@ def main():
                         output_enabled=dev_env.primary,
                         experiment_name=args.experiment,
                         log_wandb=args.log_wandb and dev_env.primary),
-        checkpoint=checkpoint_manager,
+        checkpoint=checkpoint_manager,  # type: ignore
     )
+
+    if wandb_run := services.monitor.wandb_run is not None:
+        assert output_dir is not None
+        # Log run notes and *true* output dir to wandb
+        wandb_run.notes = args.run_notes  # type: ignore
+        wandb_run.config.output_dir = output_dir  # type: ignore
+        wandb_run_field = f"wandb_run: {wandb_run.url}\n"  # type: ignore
+        # Log wandb run url to args file
+        if output_dir.startswith("gs://"):
+            with gfile.GFile(os.path.join(output_dir, 'args.yaml'), 'a') as f:
+                f.write(wandb_run_field)
+        else:
+            with open(os.path.join(output_dir, 'args.yaml'), 'a') as f:
+                f.write(wandb_run_field)
 
     if output_dir is not None and output_dir.startswith('gs://'):
         services.monitor.csv_writer = utils.GCSSummaryCsv(

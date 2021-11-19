@@ -1,9 +1,9 @@
 import csv
 import dataclasses
+import glob
 import os
 from typing import Callable, Optional, Tuple
 
-import glob
 import torch
 from tensorflow.io import gfile  # flake8: disable=import-error
 from timm import bits
@@ -39,11 +39,10 @@ def get_outdir(path: str, *paths: str, inc=False) -> str:
 
 
 def upload_checkpoints_gcs(checkpoints_dir: str, output_dir: str):
-    checkpoints_paths = glob.glob(
-        os.path.join(checkpoints_dir, '*.pth.tar'))
+    checkpoints_paths = glob.glob(os.path.join(checkpoints_dir, '*.pth.tar'))
     for checkpoint in checkpoints_paths:
         gcs_checkpoint_path = os.path.join(output_dir,
-                                            os.path.basename(checkpoint))
+                                           os.path.basename(checkpoint))
         gfile.copy(checkpoint, gcs_checkpoint_path)
 
 

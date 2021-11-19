@@ -15,15 +15,17 @@ import os
 from collections import OrderedDict
 
 import torch
-from torch._C import device
 import torch.nn as nn
 import torch.nn.parallel
 from autoattack import AutoAttack
-from timm.bits import AccuracyTopK, AvgTensor, initialize_device, Monitor, Tracker
-from timm.data import create_dataset, create_loader_v2, PreprocessCfg, RealLabelsImagenet, \
-    resolve_data_config
-from timm.models import apply_test_time_pool, create_model, is_model, list_models, load_checkpoint
+from timm.bits import (AccuracyTopK, AvgTensor, Monitor, Tracker,
+                       initialize_device)
+from timm.data import (PreprocessCfg, RealLabelsImagenet, create_dataset,
+                       create_loader_v2, resolve_data_config)
+from timm.models import (apply_test_time_pool, create_model, is_model,
+                         list_models, load_checkpoint)
 from timm.utils import natural_key, setup_default_logging
+from torch._C import device
 from torchvision import transforms
 
 import attacks
