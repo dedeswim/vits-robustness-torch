@@ -207,7 +207,7 @@ parser.add_argument('--attack-eps',
                     default=4 / 255,
                     type=float,
                     metavar='EPS',
-                    help='The epsilon to use for the attack (default 8/255)')
+                    help='The epsilon to use for the attack (default 4/255)')
 parser.add_argument('--attack-lr',
                     default=1 / 255,
                     type=float,
@@ -250,7 +250,9 @@ def validate(args):
         ), 'Model must have `num_classes` attr if not set on cmd line/config.'
         args.num_classes = model.num_classes
 
-    if args.checkpoint:
+    if args.checkpoint.startswith('gs://'):
+        model = utils.load_model_from_gcs(args.checkpoint, args.model)
+    else:
         load_checkpoint(model, args.checkpoint, args.use_ema)
 
     param_count = sum([m.numel() for m in model.parameters()])

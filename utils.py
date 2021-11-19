@@ -2,7 +2,9 @@ import csv
 import dataclasses
 import glob
 import os
+import tempfile
 from typing import Callable, Optional, Tuple
+import timm
 
 import torch
 from tensorflow.io import gfile  # flake8: disable=import-error
@@ -36,6 +38,16 @@ def get_outdir(path: str, *paths: str, inc=False) -> str:
         outdir = outdir_inc
         os_module.makedirs(outdir)
     return outdir
+
+
+def load_model_from_gcs(checkpoint_path: str, model_name: str):
+    with tempfile.TemporaryDirectory() as dst:
+        local_checkpoint_path = os.path.join(dst,
+                                             os.path.basename(checkpoint_path))
+        gfile.copy(checkpoint_path, local_checkpoint_path)
+        model = timm.create_model(model_name,
+                                  checkpoint_path=local_checkpoint_path)
+    return model
 
 
 def upload_checkpoints_gcs(checkpoints_dir: str, output_dir: str):
