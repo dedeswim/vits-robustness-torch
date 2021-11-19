@@ -746,7 +746,7 @@ def main():
         assert output_dir is not None
         # Log run notes and *true* output dir to wandb
         wandb_run.notes = args.run_notes  # type: ignore
-        wandb_run.config.output_dir = output_dir  # type: ignore
+        wandb_run.config.output = output_dir  # type: ignore
         wandb_run_field = f"wandb_run: {wandb_run.url}\n"  # type: ignore
         # Log wandb run url to args file
         if output_dir.startswith("gs://"):
