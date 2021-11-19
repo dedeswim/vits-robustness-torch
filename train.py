@@ -847,12 +847,6 @@ def main():
                 "Not removing the temporary dir {checkpoints_dir}.")
 
     if services.monitor.wandb_run is not None:
-        import wandb
-        assert checkpoints_dir is not None
-        artifact = wandb.Artifact('checkpoints', type='model')
-        artifact.add_file(os.path.join(checkpoints_dir, "best.pth.tar"))
-        artifact.add_file(os.path.join(checkpoints_dir, "last.pth.tar"))
-        services.monitor.wandb_run.log_artifact(artifact)
         services.monitor.wandb_run.finish()
 
 
