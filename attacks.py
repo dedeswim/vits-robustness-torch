@@ -98,11 +98,10 @@ class AdvTrainingLoss(nn.Module):
     def forward(
             self, model: nn.Module, x: torch.Tensor, y: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        x_adv = self.attack(model, x, y)
-        logits, logits_adv = model(x), model(y)
+        x_adv = self.attack(model, x, y.argmax(dim=-1))
+        logits, logits_adv = model(x), model(x_adv)
         loss = self.criterion(logits_adv, y)
         return loss, logits, logits_adv
-
 
 
 class TRADESLoss(nn.Module):
