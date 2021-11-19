@@ -742,7 +742,7 @@ def main():
         checkpoint=checkpoint_manager,  # type: ignore
     )
 
-    if wandb_run := services.monitor.wandb_run is not None:
+    if (wandb_run := services.monitor.wandb_run) is not None:
         assert output_dir is not None
         # Log run notes and *true* output dir to wandb
         wandb_run.notes = args.run_notes  # type: ignore
