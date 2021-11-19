@@ -745,6 +745,9 @@ def main():
     if (wandb_run := services.monitor.wandb_run) is not None:
         assert output_dir is not None
         # Log run notes and *true* output dir to wandb
+        notes = args.run_notes
+        if output_dir.startswith("gs://"):
+            notes += f"\nBucket: {output_dir}\n"
         wandb_run.notes = args.run_notes  # type: ignore
         wandb_run.config.update({"output": output_dir}, allow_val_change=True)
         wandb_run_field = f"wandb_run: {wandb_run.url}\n"  # type: ignore
