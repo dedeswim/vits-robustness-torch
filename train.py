@@ -606,9 +606,10 @@ parser.add_argument('--run-notes',
 # Adversarial training arguments
 # Args for adversarial training:
 parser.add_argument('--adv-training',
-                    action='store_true',
-                    default=False,
-                    help='Run adversarial training')
+                    default=None,
+                    type=str,
+                    help='Enables adversarial training with the specified '
+                    'technique (`trades` or `pgd`)')
 parser.add_argument('--attack',
                     default='pgd',
                     type=str,
@@ -931,15 +932,25 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         train_loss_fn = nn.CrossEntropyLoss()
     eval_loss_fn = nn.CrossEntropyLoss()
 
-    if args.adv_training:
-        train_criterion = nn.KLDivLoss(reduction="sum")
+    if args.adv_training is not None and args.adv_training == "pgd":
+        attack_criterion = nn.NLLLoss(reduction="sum")
         train_attack = attacks.make_attack(args.attack,
                                            args.attack_eps,
                                            args.attack_lr,
                                            args.attack_steps,
                                            args.attack_norm,
                                            args.attack_boundaries,
-                                           criterion=train_criterion)
+                                           criterion=attack_criterion)
+        compute_loss_fn = attacks.AdvTrainingLoss(train_attack, train_loss_fn)
+    elif args.adv_training is not None and args.adv_training == "trades":
+        attack_criterion = nn.KLDivLoss(reduction="sum")
+        train_attack = attacks.make_attack(args.attack,
+                                           args.attack_eps,
+                                           args.attack_lr,
+                                           args.attack_steps,
+                                           args.attack_norm,
+                                           args.attack_boundaries,
+                                           criterion=attack_criterion)
         compute_loss_fn = attacks.TRADESLoss(train_attack, train_loss_fn, 6.0)
     else:
         compute_loss_fn = utils.ComputeLossFn(train_loss_fn)

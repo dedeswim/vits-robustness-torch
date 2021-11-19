@@ -273,6 +273,7 @@ def validate(args):
         model = torch.jit.script(model)
 
     # FIXME device
+    # FIXME fix the fact that in the attack logits go through log_softmax twice
     model, criterion = dev_env.to_device(model, nn.CrossEntropyLoss())
     model.to(dev_env.device)
 
@@ -322,9 +323,10 @@ def validate(args):
     accuracy = AccuracyTopK(dev_env=dev_env)
     adv_accuracy = AccuracyTopK(dev_env=dev_env)
 
+    attack_criterion = nn.NLLLoss(reduction="sum")
     attack = attacks.make_attack(args.attack, args.attack_eps, args.attack_lr,
                                  args.attack_steps, args.attack_norm,
-                                 args.attack_boundaries, criterion)
+                                 args.attack_boundaries, attack_criterion)
 
     model.eval()
     num_steps = len(loader)

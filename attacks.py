@@ -1,4 +1,5 @@
 import functools
+from logging import log
 from typing import Callable, Dict, Optional, Tuple
 
 import torch
@@ -88,6 +89,22 @@ def make_attack(attack: str,
     return autoattack_fn
 
 
+class AdvTrainingLoss(nn.Module):
+    def __init__(self, attack: AttackFn, criterion: nn.Module):
+        super().__init__()
+        self.attack = attack
+        self.criterion = criterion
+
+    def forward(
+            self, model: nn.Module, x: torch.Tensor, y: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        x_adv = self.attack(model, x, y)
+        logits, logits_adv = model(x), model(y)
+        loss = self.criterion(logits_adv, y)
+        return loss, logits, logits_adv
+
+
+
 class TRADESLoss(nn.Module):
     def __init__(self, attack: AttackFn, natural_criterion: nn.Module,
                  beta: float):
@@ -110,5 +127,4 @@ class TRADESLoss(nn.Module):
         loss_robust = (1.0 / batch_size) * self.kl_criterion(
             F.log_softmax(logits_adv, dim=1), F.softmax(logits, dim=1))
         loss = loss_natural + self.beta * loss_robust
-        # print(f"TRADES loss: {loss}")
         return loss, logits, logits_adv
