@@ -15,9 +15,9 @@ NVIDIA CUDA specific speedups adopted from NVIDIA Apex examples
 Hacked together by / Copyright 2020 Ross Wightman (https://github.com/rwightman)
 """
 import argparse
-import glob
 import logging
 import os
+import shutil
 import tempfile
 from collections import OrderedDict
 from dataclasses import replace
@@ -839,7 +839,7 @@ def main():
             _logger.info(
                 f"Uploaded checkpoints to {output_dir}, removing temporary dir"
             )
-            os.rmdir(checkpoints_dir)
+            shutil.rmtree(checkpoints_dir)
         except Exception as e:
             _logger.exception(
                 f"Failed to upload checkpoints to GCS: {e}. "
