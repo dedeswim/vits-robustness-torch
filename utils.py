@@ -38,17 +38,13 @@ def get_outdir(path: str, *paths: str, inc=False) -> str:
     return outdir
 
 
-def upload_checkpoints_gcs(checkpoints_dir: str, output_dir: str, logger):
+def upload_checkpoints_gcs(checkpoints_dir: str, output_dir: str):
     checkpoints_paths = glob.glob(
         os.path.join(checkpoints_dir, '*.pth.tar'))
-    logger.info(
-        f"Uploading {len(checkpoints_paths)} checkpoints to {output_dir}")
     for checkpoint in checkpoints_paths:
         gcs_checkpoint_path = os.path.join(output_dir,
                                             os.path.basename(checkpoint))
         gfile.copy(checkpoint, gcs_checkpoint_path)
-    logger.info(
-        f"Uploaded {len(checkpoints_paths)} checkpoints to {output_dir}")
 
 
 class GCSSummaryCsv(bits.monitor.SummaryCsv):

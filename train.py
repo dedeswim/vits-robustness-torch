@@ -810,7 +810,17 @@ def main():
     if dev_env.primary and output_dir is not None and output_dir.startswith(
             'gs://'):
         assert checkpoints_dir is not None
-        utils.upload_checkpoints_gcs(checkpoints_dir, output_dir, _logger)
+        try:
+            _logger.info(f"Uploading checkpoints to {output_dir}")
+            utils.upload_checkpoints_gcs(checkpoints_dir, output_dir)
+            _logger.info(
+                f"Uploaded checkpoints to {output_dir}, removing temporary dir"
+            )
+            os.rmdir(checkpoints_dir)
+        except Exception as e:
+            _logger.exception(
+                f"Failed to upload checkpoints to GCS: {e}. "
+                "Not removing the temporary dir {checkpoints_dir}.")
 
     if services.monitor.wandb_run is not None:
         import wandb
