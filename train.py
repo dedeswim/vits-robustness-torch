@@ -764,6 +764,19 @@ def main():
         services.monitor.csv_writer = utils.GCSSummaryCsv(
             output_dir=output_dir)
 
+    if args.adv_training is not None:
+        attack_criterion = nn.NLLLoss(reduction="sum")
+        dev_env.to_device(attack_criterion)
+        eval_attack = attacks.make_attack(args.attack,
+                                          args.attack_eps,
+                                          args.attack_lr,
+                                          args.attack_steps,
+                                          args.attack_norm,
+                                          args.attack_boundaries,
+                                          criterion=attack_criterion)
+    else:
+        eval_attack = None
+
     _logger.info('Starting training, the first steps may take a long time')
 
     try:
@@ -774,13 +787,12 @@ def main():
             if args.mixup_off_epoch and epoch >= args.mixup_off_epoch:
                 if loader_train.mixup_enabled:
                     loader_train.mixup_enabled = False
-
-            train_metrics = train_one_epoch(
+            """train_metrics = train_one_epoch(
                 state=train_state,
                 services=services,
                 loader=loader_train,
                 dev_env=dev_env,
-            )
+            )"""
 
             if dev_env.distributed and args.dist_bn in ('broadcast', 'reduce'):
                 if dev_env.primary:
@@ -789,8 +801,12 @@ def main():
                 distribute_bn(train_state.model, args.dist_bn == 'reduce',
                               dev_env)
 
-            eval_metrics = evaluate(train_state.model, train_state.eval_loss,
-                                    loader_eval, services.monitor, dev_env)
+            eval_metrics = evaluate(train_state.model,
+                                    train_state.eval_loss,
+                                    loader_eval,
+                                    services.monitor,
+                                    dev_env,
+                                    attack=eval_attack)
 
             if train_state.model_ema is not None:
                 if dev_env.distributed and args.dist_bn in ('broadcast',
@@ -803,7 +819,8 @@ def main():
                                             loader_eval,
                                             services.monitor,
                                             dev_env,
-                                            phase_suffix='EMA')
+                                            phase_suffix='EMA',
+                                            attack=eval_attack)
                 eval_metrics = ema_eval_metrics
 
             if train_state.lr_scheduler is not None:
@@ -1190,7 +1207,7 @@ def after_train_step(
     with torch.no_grad():
         output, adv_output, target, loss = tensors
         loss_meter.update(loss, output.shape[0])
-        # accuracy_meter.update(output, target.argmax(dim=-1))
+        accuracy_meter.update(output, target.argmax(dim=-1))
 
         if adv_output is not None:
             if isinstance(adv_output, (tuple, list)):
@@ -1208,7 +1225,7 @@ def after_train_step(
                 step_idx + 1) % cfg.log_interval == 0:
             global_batch_size = dev_env.world_size * output.shape[0]
             loss_avg = loss_meter.compute()
-            # accuracy_avg, _ = accuracy_meter.compute().items() # FIXME: gets stuck here
+            accuracy_avg, _ = None, None  # accuracy_meter.compute().items()  # FIXME: gets stuck here
             if adv_output is not None:
                 robust_accuracy_avg, _ = None, None  # robust_accuracy_meter.compute().items()
             else:
@@ -1222,6 +1239,8 @@ def after_train_step(
                     step_end_idx=step_end_idx,
                     epoch=state.epoch,
                     loss=loss_avg.item(),
+                    # accuracy=accuracy_avg,
+                    # robust_accuracy=robust_accuracy_avg,
                     rate=tracker.get_avg_iter_rate(global_batch_size),
                     lr=lr_avg)
 
@@ -1246,6 +1265,7 @@ def evaluate(model: nn.Module,
     losses_m = AvgTensor()
     # FIXME move loss and accuracy modules into task specific TaskMetric obj
     accuracy_m = AccuracyTopK()
+    robust_accuracy_m = AccuracyTopK()
 
     model.eval()
 
@@ -1259,6 +1279,15 @@ def evaluate(model: nn.Module,
             with dev_env.autocast():
                 output = model(sample)
                 loss = loss_fn(output, target)
+
+                if attack is not None:
+                    with torch.enable_grad():
+                        model.train()
+                        adv_sample = attack(model, sample, target)
+                        model.eval()
+                        adv_output = model(adv_sample)
+                else:
+                    adv_output = None
 
             # FIXME, explictly marking step for XLA use since I'm not using the parallel xm loader
             # need to investigate whether parallel loader wrapper is helpful on tpu-vm or only use for 2-vm setup.
@@ -1276,8 +1305,16 @@ def evaluate(model: nn.Module,
             losses_m.update(loss, output.size(0))
             accuracy_m.update(output, target)
 
+            if adv_output is not None:
+                robust_accuracy_m.update(adv_output, target)
+
             if last_step or step_idx % log_interval == 0:
                 top1, top5 = accuracy_m.compute().values()
+                if adv_output is not None:
+                    robust_top1, _ = robust_accuracy_m.compute().values()
+                else:
+                    robust_top1 = None
+
                 loss_avg = losses_m.compute()
                 logger.log_step(
                     'Eval',
@@ -1286,14 +1323,18 @@ def evaluate(model: nn.Module,
                     loss=loss_avg.item(),
                     top1=top1.item(),
                     top5=top5.item(),
+                    robust_top1=robust_top1.item()
+                    if robust_top1 is not None else None,
                     phase_suffix=phase_suffix,
                 )
             tracker.mark_iter()
 
     top1, top5 = accuracy_m.compute().values()
+    robust_top1, _ = robust_accuracy_m.compute().values()
     results = OrderedDict([
         ('loss', losses_m.compute().item()),
         ('top1', top1.item()),
+        ('robust_top1', robust_top1.item()),
     ])
     return results
 
