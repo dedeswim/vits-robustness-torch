@@ -1164,7 +1164,8 @@ def train_one_epoch(
     if hasattr(state.updater.optimizer, 'sync_lookahead'):
         state.updater.optimizer.sync_lookahead()
 
-    return OrderedDict([('loss', loss_meter.compute().item())])
+    return OrderedDict([('loss', loss_meter.compute().item()),
+                        ('lr', state.updater.get_average_lr())])
 
 
 def after_train_step(
@@ -1207,12 +1208,6 @@ def after_train_step(
     with torch.no_grad():
         output, adv_output, target, loss = tensors
         loss_meter.update(loss, output.shape[0])
-        accuracy_meter.update(output, target.argmax(dim=-1))
-
-        if adv_output is not None:
-            if isinstance(adv_output, (tuple, list)):
-                adv_output = adv_output[0]
-            robust_accuracy_meter.update(adv_output, target.argmax(axis=-1))
 
         if state.model_ema is not None:
             # FIXME should ema update be included here or in train / updater step? does it matter?
@@ -1225,11 +1220,6 @@ def after_train_step(
                 step_idx + 1) % cfg.log_interval == 0:
             global_batch_size = dev_env.world_size * output.shape[0]
             loss_avg = loss_meter.compute()
-            accuracy_avg, _ = None, None  # accuracy_meter.compute().items()  # FIXME: gets stuck here
-            if adv_output is not None:
-                robust_accuracy_avg, _ = None, None  # robust_accuracy_meter.compute().items()
-            else:
-                robust_accuracy_avg = None
 
             if services.monitor is not None:
                 lr_avg = state.updater.get_average_lr()
@@ -1239,8 +1229,6 @@ def after_train_step(
                     step_end_idx=step_end_idx,
                     epoch=state.epoch,
                     loss=loss_avg.item(),
-                    # accuracy=accuracy_avg,
-                    # robust_accuracy=robust_accuracy_avg,
                     rate=tracker.get_avg_iter_rate(global_batch_size),
                     lr=lr_avg)
 
