@@ -787,12 +787,12 @@ def main():
             if args.mixup_off_epoch and epoch >= args.mixup_off_epoch:
                 if loader_train.mixup_enabled:
                     loader_train.mixup_enabled = False
-            """train_metrics = train_one_epoch(
+            train_metrics = train_one_epoch(
                 state=train_state,
                 services=services,
                 loader=loader_train,
                 dev_env=dev_env,
-            )"""
+            )
 
             if dev_env.distributed and args.dist_bn in ('broadcast', 'reduce'):
                 if dev_env.primary:
