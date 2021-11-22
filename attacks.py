@@ -1,6 +1,6 @@
 import functools
-from logging import log
-from typing import Callable, Dict, Optional, Tuple
+import math
+from typing import Callable, Dict, Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
@@ -8,10 +8,14 @@ from autoattack import AutoAttack
 from torch import nn
 
 AttackFn = Callable[[nn.Module, torch.Tensor, torch.Tensor], torch.Tensor]
+TrainAttackFn = Callable[[nn.Module, torch.Tensor, torch.Tensor, int],
+                         torch.Tensor]
 Boundaries = Tuple[float, float]
 ProjectFn = Callable[[torch.Tensor, torch.Tensor, float, Boundaries],
                      torch.Tensor]
 InitFn = Callable[[torch.Tensor, float, ProjectFn, Boundaries], torch.Tensor]
+EpsSchedule = Callable[[int], float]
+ScheduleMaker = Callable[[float, int], EpsSchedule]
 Norm = str
 
 
@@ -38,7 +42,7 @@ def pgd(model: nn.Module, x: torch.Tensor, y: torch.Tensor, eps: float,
                                          eps=eps,
                                          boundaries=boundaries)
     x_adv = init_fn(x, eps, project_fn, boundaries)
-    for step in range(steps):
+    for _ in range(steps):
         x_adv.requires_grad_()
         loss = criterion(
             F.log_softmax(model(x_adv), dim=-1),
@@ -51,10 +55,51 @@ def pgd(model: nn.Module, x: torch.Tensor, y: torch.Tensor, eps: float,
     return x_adv
 
 
-_ATTACKS: Dict[str, AttackFn] = {"pgd": pgd}
+_ATTACKS = {"pgd": pgd}
 _INIT_PROJECT_FN: Dict[str, Tuple[InitFn, ProjectFn]] = {
     "linf": (init_linf, project_linf)
 }
+
+
+def make_sine_schedule(final: float, period: int) -> Callable[[int], float]:
+    def sine_schedule(step: int) -> float:
+        if step < period:
+            return 0.5 * final * (1 + math.sin(math.pi *
+                                               (step / period - 0.5)))
+        return final
+
+    return sine_schedule
+
+
+_SCHEDULES: Dict[str, ScheduleMaker] = {
+    "sine": make_sine_schedule,
+    "constant": (lambda eps, _: (lambda _: eps))
+}
+
+
+def make_train_attack(attack_name: str, schedule: str, final_eps: float,
+                      period: int, step_size: float, steps: int, norm: Norm,
+                      boundaries: Tuple[float, float],
+                      criterion: nn.Module) -> TrainAttackFn:
+    attack_fn = _ATTACKS[attack_name]
+    init_fn, project_fn = _INIT_PROJECT_FN[norm]
+    schedule_fn = _SCHEDULES[schedule](final_eps, period)
+
+    def attack(model: nn.Module, x: torch.Tensor, y: torch.Tensor,
+               step: int) -> torch.Tensor:
+        eps = schedule_fn(step)
+        return attack_fn(model,
+                         x,
+                         y,
+                         eps,
+                         step_size=step_size,
+                         steps=steps,
+                         boundaries=boundaries,
+                         init_fn=init_fn,
+                         project_fn=project_fn,
+                         criterion=criterion)
+
+    return attack
 
 
 def make_attack(attack: str,
@@ -79,6 +124,7 @@ def make_attack(attack: str,
 
     def autoattack_fn(model: nn.Module, x: torch.Tensor,
                       y: torch.Tensor) -> torch.Tensor:
+        assert isinstance(eps, float)
         adversary = AutoAttack(model,
                                norm.capitalize(),
                                eps=eps,
@@ -90,22 +136,21 @@ def make_attack(attack: str,
 
 
 class AdvTrainingLoss(nn.Module):
-    def __init__(self, attack: AttackFn, criterion: nn.Module):
+    def __init__(self, attack: TrainAttackFn, criterion: nn.Module):
         super().__init__()
         self.attack = attack
         self.criterion = criterion
 
-    def forward(
-            self, model: nn.Module, x: torch.Tensor, y: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        x_adv = self.attack(model, x, y.argmax(dim=-1))
+    def forward(self, model: nn.Module, x: torch.Tensor, y: torch.Tensor,
+                epoch: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        x_adv = self.attack(model, x, y.argmax(dim=-1), epoch)
         logits, logits_adv = model(x), model(x_adv)
         loss = self.criterion(logits_adv, y)
         return loss, logits, logits_adv
 
 
 class TRADESLoss(nn.Module):
-    def __init__(self, attack: AttackFn, natural_criterion: nn.Module,
+    def __init__(self, attack: TrainAttackFn, natural_criterion: nn.Module,
                  beta: float):
         super().__init__()
         self.attack = attack
@@ -113,13 +158,12 @@ class TRADESLoss(nn.Module):
         self.kl_criterion = nn.KLDivLoss(reduction="sum")
         self.beta = beta
 
-    def forward(
-            self, model: nn.Module, x: torch.Tensor, y: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, model: nn.Module, x: torch.Tensor, y: torch.Tensor,
+                epoch: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_size = x.size(0)
         # model.eval()  # FIXME: understand why with eval the gradient of BatchNorm crashes
         output_softmax = F.softmax(model(x.detach()), dim=-1)
-        x_adv = self.attack(model, x, output_softmax)
+        x_adv = self.attack(model, x, output_softmax, epoch)
         model.train()
         logits, logits_adv = model(x), model(x_adv)
         loss_natural = self.natural_criterion(logits, y)

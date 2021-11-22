@@ -72,30 +72,13 @@ class GCSSummaryCsv(bits.monitor.SummaryCsv):
             dw.writerow(row_dict)
 
 
-def my_create_dataset(name: str,
-                      root: str,
-                      split: str = 'validation',
-                      search_split: bool = True,
-                      is_training: bool = False,
-                      batch_size: Optional[int] = None,
-                      **kwargs):
-    """Wraps timm's create dataset to use also PyTorch's datasets"""
-    name = name.lower()
-    if not name.startswith('torch'):
-        return create_dataset(name, root, split, search_split, is_training,
-                              batch_size, **kwargs)
-
-    dataset_name = name.split('/')[-1]
-    return _DATASETS[dataset_name](root, train=is_training, download=True)
-
-
 class ComputeLossFn(nn.Module):
     def __init__(self, loss_fn: nn.Module):
         super().__init__()
         self.loss_fn = loss_fn
 
     def forward(
-        self, model: nn.Module, x: torch.Tensor, y: torch.Tensor
+            self, model: nn.Module, x: torch.Tensor, y: torch.Tensor, _: int
     ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         output = model(x)
         return self.loss_fn(output, y), output, None
@@ -103,9 +86,10 @@ class ComputeLossFn(nn.Module):
 
 @dataclasses.dataclass
 class AdvTrainState(bits.TrainState):
-    compute_loss_fn: Callable[[nn.Module, torch.Tensor, torch.Tensor], Tuple[
-        torch.Tensor, torch.Tensor,
-        Optional[torch.Tensor]]] = None  # type: ignore
+    compute_loss_fn: Callable[
+        [nn.Module, torch.Tensor, torch.Tensor, int],
+        Tuple[torch.Tensor, torch.Tensor,
+              Optional[torch.Tensor]]] = None  # type: ignore
 
     @classmethod
     def from_bits(cls, instance: bits.TrainState, **kwargs):

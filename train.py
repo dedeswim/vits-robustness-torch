@@ -23,6 +23,7 @@ from collections import OrderedDict
 from dataclasses import replace
 from datetime import datetime
 from typing import Optional, Tuple
+from timm.data.dataset_factory import create_dataset
 
 import torch
 import torch.nn as nn
@@ -620,6 +621,16 @@ parser.add_argument('--attack-eps',
                     type=float,
                     metavar='EPS',
                     help='The epsilon to use for the attack (default 8/255)')
+parser.add_argument('--eps-schedule',
+                    default='constant',
+                    type=str,
+                    metavar='SCHEDULE',
+                    help='What schedule to use for eps (default: "constant")')
+parser.add_argument('--eps-schedule-period',
+                    default=10,
+                    type=int,
+                    metavar='EPOCHS',
+                    help='How many epochs before reaching full eps')
 parser.add_argument('--attack-lr',
                     default=1 / 255,
                     type=float,
@@ -945,23 +956,27 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
 
     if args.adv_training is not None and args.adv_training == "pgd":
         attack_criterion = nn.NLLLoss(reduction="sum")
-        train_attack = attacks.make_attack(args.attack,
-                                           args.attack_eps,
-                                           args.attack_lr,
-                                           args.attack_steps,
-                                           args.attack_norm,
-                                           args.attack_boundaries,
-                                           criterion=attack_criterion)
+        train_attack = attacks.make_train_attack(args.attack,
+                                                 args.eps_schedule,
+                                                 args.attack_eps,
+                                                 args.eps_schedule_period,
+                                                 args.attack_lr,
+                                                 args.attack_steps,
+                                                 args.attack_norm,
+                                                 args.attack_boundaries,
+                                                 criterion=attack_criterion)
         compute_loss_fn = attacks.AdvTrainingLoss(train_attack, train_loss_fn)
     elif args.adv_training is not None and args.adv_training == "trades":
         attack_criterion = nn.KLDivLoss(reduction="sum")
-        train_attack = attacks.make_attack(args.attack,
-                                           args.attack_eps,
-                                           args.attack_lr,
-                                           args.attack_steps,
-                                           args.attack_norm,
-                                           args.attack_boundaries,
-                                           criterion=attack_criterion)
+        train_attack = attacks.make_train_attack(args.attack,
+                                                 args.eps_schedule,
+                                                 args.attack_eps,
+                                                 args.eps_schedule_period,
+                                                 args.attack_lr,
+                                                 args.attack_steps,
+                                                 args.attack_norm,
+                                                 args.attack_boundaries,
+                                                 criterion=attack_criterion)
         compute_loss_fn = attacks.TRADESLoss(train_attack, train_loss_fn, 6.0)
     else:
         compute_loss_fn = utils.ComputeLossFn(train_loss_fn)
@@ -998,18 +1013,18 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     data_config['normalize'] = not args.no_normalize
 
     # create the train and eval datasets
-    dataset_train = utils.my_create_dataset(args.dataset,
-                                            root=args.data_dir,
-                                            split=args.train_split,
-                                            is_training=True,
-                                            batch_size=args.batch_size,
-                                            repeats=args.epoch_repeats)
+    dataset_train = create_dataset(args.dataset,
+                                   root=args.data_dir,
+                                   split=args.train_split,
+                                   is_training=True,
+                                   batch_size=args.batch_size,
+                                   repeats=args.epoch_repeats)
 
-    dataset_eval = utils.my_create_dataset(args.dataset,
-                                           root=args.data_dir,
-                                           split=args.val_split,
-                                           is_training=False,
-                                           batch_size=args.batch_size)
+    dataset_eval = create_dataset(args.dataset,
+                                  root=args.data_dir,
+                                  split=args.val_split,
+                                  is_training=False,
+                                  batch_size=args.batch_size)
 
     # setup mixup / cutmix
     mixup_cfg = None
@@ -1028,7 +1043,7 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
         dataset_train = AugMixDataset(dataset_train,
                                       num_splits=args.aug_splits)
 
-    # create data loaders w/ augmentation pipeiine
+    # create data loaders w/ augmentation pipeline
     train_interpolation = args.train_interpolation
     if args.no_aug or not train_interpolation:
         train_interpolation = data_config['interpolation']
@@ -1138,7 +1153,7 @@ def train_one_epoch(
         # FIXME move forward + loss into model 'task' wrapper
         with dev_env.autocast():
             loss, output, adv_output = state.compute_loss_fn(
-                state.model, sample, target)
+                state.model, sample, target, state.epoch)
 
         state.updater.apply(loss)
 
