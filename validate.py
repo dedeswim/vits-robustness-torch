@@ -17,15 +17,14 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 import torch.nn.parallel
-from autoattack import AutoAttack
+from tensorflow.io import gfile
 from timm.bits import (AccuracyTopK, AvgTensor, Monitor, Tracker,
                        initialize_device)
-from timm.data import (PreprocessCfg, RealLabelsImagenet, create_dataset,
-                       create_loader_v2, resolve_data_config)
+from timm.data import (RealLabelsImagenet, create_dataset, create_loader_v2,
+                       resolve_data_config)
 from timm.models import (apply_test_time_pool, create_model, is_model,
                          list_models, load_checkpoint)
 from timm.utils import natural_key, setup_default_logging
-from torch._C import device
 from torchvision import transforms
 
 import attacks
@@ -407,8 +406,8 @@ def validate(args):
                      name_map={
                          'top1': 'Acc@1',
                          'top5': 'Acc@5',
-                         'adv_top1': 'AdvAcc@1',
-                         'adv_top5': 'AdvAcc@5',
+                         'adv_top1': 'RobustAcc@1',
+                         'adv_top5': 'RobustAcc@5',
                      },
                      **results)
 
@@ -486,7 +485,11 @@ def main():
 
 
 def write_results(results_file, results):
-    with open(results_file, mode='w') as cf:
+    if results_file.startswith("gs://"):
+        open_f = gfile.GFile
+    else:
+        open_f = open
+    with open_f(results_file, mode='w') as cf:
         dw = csv.DictWriter(cf, fieldnames=results[0].keys())
         dw.writeheader()
         for r in results:

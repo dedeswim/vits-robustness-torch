@@ -101,7 +101,7 @@ def make_train_attack(attack_name: str, schedule: str, final_eps: float,
     init_fn, project_fn = _INIT_PROJECT_FN[norm]
     schedule_fn = _SCHEDULES[schedule](final_eps, period)
 
-    if attack_mode is "ll":
+    if attack_mode == "ll":
         targeted = True
     else:
         targeted = False
@@ -109,10 +109,10 @@ def make_train_attack(attack_name: str, schedule: str, final_eps: float,
     def attack(model: nn.Module, x: torch.Tensor, y: torch.Tensor,
                step: int) -> torch.Tensor:
         eps = schedule_fn(step)
-        if attack_mode is "ll":
+        if attack_mode == "ll":
             with torch.no_grad():
                 y = model(x).argmin(dim=-1)
-        elif attack_mode is "soft-labels":
+        elif attack_mode == "soft-labels":
             with torch.no_grad():
                 y = model(x)
         return attack_fn(model,
