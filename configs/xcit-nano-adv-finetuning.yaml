@@ -1,12 +1,12 @@
 aa: rand-m9-mstd0.5-inc1
-adv_training: true
+adv_training: pgd
 amp: false
 attack: pgd
 attack_boundaries:
 - 0
 - 1
 attack_eps: 0.031372549
-attack_lr: 1
+attack_lr: 1.0
 attack_norm: linf
 attack_steps: 1
 aug_splits: 0

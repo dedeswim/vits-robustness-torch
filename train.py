@@ -1341,7 +1341,7 @@ def evaluate(model: nn.Module,
     results = OrderedDict([
         ('loss', losses_m.compute().item()),
         ('top1', top1.item()),
-        ('', robust_top1.item()),
+        ('robust_top1', robust_top1.item()),
     ])
     return results
 

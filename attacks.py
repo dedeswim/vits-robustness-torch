@@ -72,17 +72,27 @@ _INIT_PROJECT_FN: Dict[str, Tuple[InitFn, ProjectFn]] = {
 }
 
 
-def make_sine_schedule(final: float, period: int) -> Callable[[int], float]:
+def make_sine_schedule(final: float, warmup: int) -> Callable[[int], float]:
     def sine_schedule(step: int) -> float:
-        if step < period:
+        if step < warmup:
             return 0.5 * final * (1 + math.sin(math.pi *
-                                               (step / period - 0.5)))
+                                               (step / warmup - 0.5)))
         return final
 
     return sine_schedule
 
 
+def make_linear_schedule(final: float, warmup: int) -> Callable[[int], float]:
+    def linear_schedule(step: int) -> float:
+        if step < warmup:
+            return step / warmup * final
+        return final
+
+    return linear_schedule
+
+
 _SCHEDULES: Dict[str, ScheduleMaker] = {
+    "linear": make_linear_schedule,
     "sine": make_sine_schedule,
     "constant": (lambda eps, _: (lambda _: eps))
 }
