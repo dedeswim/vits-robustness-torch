@@ -1001,7 +1001,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         train_cfg=train_cfg,
     )
 
-    schedule = _SCHEDULES[args.schedule](args.eps, args.eps_schedule_period)
+    schedule = _SCHEDULES[args.eps_schedule](args.attack_eps, args.eps_schedule_period)
 
     train_state = utils.AdvTrainState.from_bits(
         train_state, compute_loss_fn=compute_loss_fn, eps_schedule=schedule)
