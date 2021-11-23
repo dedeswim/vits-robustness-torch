@@ -34,10 +34,17 @@ def init_linf(x: torch.Tensor, eps: float, project_fn: ProjectFn,
     return project_fn(x, x_adv, eps, boundaries)
 
 
-def pgd(model: nn.Module, x: torch.Tensor, y: torch.Tensor, eps: float,
-        step_size: float, steps: int, boundaries: Tuple[float, float],
-        init_fn: InitFn, project_fn: ProjectFn,
-        criterion: nn.Module) -> torch.Tensor:
+def pgd(model: nn.Module,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        eps: float,
+        step_size: float,
+        steps: int,
+        boundaries: Tuple[float, float],
+        init_fn: InitFn,
+        project_fn: ProjectFn,
+        criterion: nn.Module,
+        targeted: bool = False) -> torch.Tensor:
     local_project_fn = functools.partial(project_fn,
                                          eps=eps,
                                          boundaries=boundaries)
@@ -49,7 +56,11 @@ def pgd(model: nn.Module, x: torch.Tensor, y: torch.Tensor, eps: float,
             y,
         )
         grad = torch.autograd.grad(loss, x_adv)[0]
-        x_adv = x_adv.detach() + step_size * torch.sign(grad)
+        if targeted:
+            # Minimize the loss if the attack is targeted
+            x_adv = x_adv.detach() - step_size * torch.sign(grad)
+        else:
+            x_adv = x_adv.detach() + step_size * torch.sign(grad)
         x_adv = local_project_fn(x, x_adv)
 
     return x_adv
@@ -81,13 +92,29 @@ def make_train_attack(attack_name: str, schedule: str, final_eps: float,
                       period: int, step_size: float, steps: int, norm: Norm,
                       boundaries: Tuple[float, float],
                       criterion: nn.Module) -> TrainAttackFn:
+    if attack_name in {"ll", "soft-labels"}:
+        attack_mode = attack_name
+        attack_name = "pgd"
+    else:
+        attack_mode = None
     attack_fn = _ATTACKS[attack_name]
     init_fn, project_fn = _INIT_PROJECT_FN[norm]
     schedule_fn = _SCHEDULES[schedule](final_eps, period)
 
+    if attack_mode is "ll":
+        targeted = True
+    else:
+        targeted = False
+
     def attack(model: nn.Module, x: torch.Tensor, y: torch.Tensor,
                step: int) -> torch.Tensor:
         eps = schedule_fn(step)
+        if attack_mode is "ll":
+            with torch.no_grad():
+                y = model(x).argmin(dim=-1)
+        elif attack_mode is "soft-labels":
+            with torch.no_grad():
+                y = model(x)
         return attack_fn(model,
                          x,
                          y,
@@ -97,7 +124,8 @@ def make_train_attack(attack_name: str, schedule: str, final_eps: float,
                          boundaries=boundaries,
                          init_fn=init_fn,
                          project_fn=project_fn,
-                         criterion=criterion)
+                         criterion=criterion,
+                         targeted=targeted)
 
     return attack
 

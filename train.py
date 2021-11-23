@@ -23,7 +23,6 @@ from collections import OrderedDict
 from dataclasses import replace
 from datetime import datetime
 from typing import Optional, Tuple
-from timm.data.dataset_factory import create_dataset
 
 import torch
 import torch.nn as nn
@@ -35,8 +34,10 @@ from timm.bits import (AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv,
                        setup_model_and_optimizer)
 from timm.data import (AugCfg, AugMixDataset, MixupCfg, create_loader_v2,
                        resolve_data_config)
+from timm.data.dataset_factory import create_dataset
 from timm.loss import *
 from timm.models import convert_splitbn_model, create_model, safe_model_name
+from timm.models.byobnet import expand_blocks_cfg
 from timm.optim import optimizer_kwargs
 from timm.scheduler import create_scheduler
 from timm.utils import (get_outdir, random_seed, setup_default_logging,
@@ -45,7 +46,7 @@ from torchvision import transforms
 
 import attacks
 import utils
-from attacks import AttackFn
+from attacks import _SCHEDULES, AttackFn, EpsSchedule
 
 _logger = logging.getLogger('train')
 
@@ -1000,8 +1001,10 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         train_cfg=train_cfg,
     )
 
+    schedule = _SCHEDULES[args.schedule](args.eps, args.eps_schedule_period)
+
     train_state = utils.AdvTrainState.from_bits(
-        train_state, compute_loss_fn=compute_loss_fn)
+        train_state, compute_loss_fn=compute_loss_fn, eps_schedule=schedule)
 
     return train_state
 
@@ -1180,6 +1183,7 @@ def train_one_epoch(
         state.updater.optimizer.sync_lookahead()
 
     return OrderedDict([('loss', loss_meter.compute().item()),
+                        ('eps', state.eps_schedule(state.epoch)),
                         ('lr', state.updater.get_average_lr())])
 
 
@@ -1337,7 +1341,7 @@ def evaluate(model: nn.Module,
     results = OrderedDict([
         ('loss', losses_m.compute().item()),
         ('top1', top1.item()),
-        ('robust_top1', robust_top1.item()),
+        ('', robust_top1.item()),
     ])
     return results
 

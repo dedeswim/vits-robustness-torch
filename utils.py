@@ -4,8 +4,8 @@ import glob
 import os
 import tempfile
 from typing import Callable, Optional, Tuple
-import timm
 
+import timm
 import torch
 from tensorflow.io import gfile  # flake8: disable=import-error
 from timm import bits
@@ -13,6 +13,8 @@ from timm.data import PreprocessCfg
 from timm.data.dataset_factory import create_dataset
 from torch import nn
 from torchvision import datasets
+
+import attacks
 
 _DATASETS = {'cifar10': datasets.CIFAR10, 'cifar100': datasets.CIFAR100}
 
@@ -90,6 +92,7 @@ class AdvTrainState(bits.TrainState):
         [nn.Module, torch.Tensor, torch.Tensor, int],
         Tuple[torch.Tensor, torch.Tensor,
               Optional[torch.Tensor]]] = None  # type: ignore
+    eps_schedule: attacks.EpsSchedule = None  # type: ignore
 
     @classmethod
     def from_bits(cls, instance: bits.TrainState, **kwargs):

@@ -27,7 +27,7 @@ drop_connect: null
 drop_path: 0.05
 epoch_repeats: 0.0
 epochs: 500
-eval_metric: top1
+eval_metric: robust_top1
 experiment: xcit
 force_cpu: false
 gp: null

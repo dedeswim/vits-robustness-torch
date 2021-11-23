@@ -36,7 +36,7 @@ drop_connect: null
 drop_path: 0.0
 epoch_repeats: 0.0
 epochs: 100
-eval_metric: top1
+eval_metric: robust_top1
 experiment: xcit-nano-adv-finetuning
 force_cpu: false
 gp: null
