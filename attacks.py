@@ -13,7 +13,7 @@ Boundaries = Tuple[float, float]
 ProjectFn = Callable[[torch.Tensor, torch.Tensor, float, Boundaries], torch.Tensor]
 InitFn = Callable[[torch.Tensor, float, ProjectFn, Boundaries], torch.Tensor]
 EpsSchedule = Callable[[int], float]
-ScheduleMaker = Callable[[float, int], EpsSchedule]
+ScheduleMaker = Callable[[float, int, int], EpsSchedule]
 Norm = str
 
 
@@ -63,19 +63,23 @@ _ATTACKS = {"pgd": pgd}
 _INIT_PROJECT_FN: Dict[str, Tuple[InitFn, ProjectFn]] = {"linf": (init_linf, project_linf)}
 
 
-def make_sine_schedule(final: float, warmup: int) -> Callable[[int], float]:
+def make_sine_schedule(final: float, warmup: int, zero_eps_epochs: int) -> Callable[[int], float]:
     def sine_schedule(step: int) -> float:
+        if step < zero_eps_epochs:
+            return 0.0
         if step < warmup:
-            return 0.5 * final * (1 + math.sin(math.pi * (step / warmup - 0.5)))
+            return 0.5 * final * (1 + math.sin(math.pi * ((step - zero_eps_epochs) / warmup - 0.5)))
         return final
 
     return sine_schedule
 
 
-def make_linear_schedule(final: float, warmup: int) -> Callable[[int], float]:
+def make_linear_schedule(final: float, warmup: int, zero_eps_epochs: int) -> Callable[[int], float]:
     def linear_schedule(step: int) -> float:
+        if step < zero_eps_epochs:
+            return 0.0
         if step < warmup:
-            return step / warmup * final
+            return (step - zero_eps_epochs) / warmup * final
         return final
 
     return linear_schedule
@@ -84,12 +88,12 @@ def make_linear_schedule(final: float, warmup: int) -> Callable[[int], float]:
 _SCHEDULES: Dict[str, ScheduleMaker] = {
     "linear": make_linear_schedule,
     "sine": make_sine_schedule,
-    "constant": (lambda eps, _: (lambda _: eps))
+    "constant": (lambda eps, _1, _2: (lambda _: eps))
 }
 
 
-def make_train_attack(attack_name: str, schedule: str, final_eps: float, period: int, step_size: float,
-                      steps: int, norm: Norm, boundaries: Tuple[float, float],
+def make_train_attack(attack_name: str, schedule: str, final_eps: float, period: int, zero_eps_epochs: int,
+                      step_size: float, steps: int, norm: Norm, boundaries: Tuple[float, float],
                       criterion: nn.Module) -> TrainAttackFn:
     if attack_name in {"ll", "soft-labels"}:
         attack_mode: Optional[str] = attack_name
@@ -98,7 +102,7 @@ def make_train_attack(attack_name: str, schedule: str, final_eps: float, period:
         attack_mode = None
     attack_fn = _ATTACKS[attack_name]
     init_fn, project_fn = _INIT_PROJECT_FN[norm]
-    schedule_fn = _SCHEDULES[schedule](final_eps, period)
+    schedule_fn = _SCHEDULES[schedule](final_eps, period, zero_eps_epochs)
 
     if attack_mode == "ll":
         targeted = True

@@ -518,6 +518,11 @@ parser.add_argument('--eps-schedule-period',
                     type=int,
                     metavar='EPOCHS',
                     help='How many epochs before reaching full eps')
+parser.add_argument('--zero-eps-epochs',
+                    default=0,
+                    type=int,
+                    metavar='EPOCHS',
+                    help='How many epochs eps should be 0')
 parser.add_argument('--attack-lr',
                     default=1 / 255,
                     type=float,
@@ -814,6 +819,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                                                  args.eps_schedule,
                                                  args.attack_eps,
                                                  args.eps_schedule_period,
+                                                 args.zero_eps_epochs,
                                                  args.attack_lr,
                                                  args.attack_steps,
                                                  args.attack_norm,
@@ -826,6 +832,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                                                  args.eps_schedule,
                                                  args.attack_eps,
                                                  args.eps_schedule_period,
+                                                 args.zero_eps_epochs,
                                                  args.attack_lr,
                                                  args.attack_steps,
                                                  args.attack_norm,
@@ -854,7 +861,11 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         train_cfg=train_cfg,
     )
 
-    schedule = _SCHEDULES[args.eps_schedule](args.attack_eps, args.eps_schedule_period)
+    schedule = _SCHEDULES[args.eps_schedule](
+        args.attack_eps,
+        args.eps_schedule_period,
+        args.zero_eps_epochs,
+    )
 
     train_state = utils.AdvTrainState.from_bits(train_state,
                                                 compute_loss_fn=compute_loss_fn,
