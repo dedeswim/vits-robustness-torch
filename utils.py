@@ -40,19 +40,16 @@ def get_outdir(path: str, *paths: str, inc=False) -> str:
 
 def load_model_from_gcs(checkpoint_path: str, model_name: str):
     with tempfile.TemporaryDirectory() as dst:
-        local_checkpoint_path = os.path.join(dst,
-                                             os.path.basename(checkpoint_path))
+        local_checkpoint_path = os.path.join(dst, os.path.basename(checkpoint_path))
         gfile.copy(checkpoint_path, local_checkpoint_path)
-        model = timm.create_model(model_name,
-                                  checkpoint_path=local_checkpoint_path)
+        model = timm.create_model(model_name, checkpoint_path=local_checkpoint_path)
     return model
 
 
 def upload_checkpoints_gcs(checkpoints_dir: str, output_dir: str):
     checkpoints_paths = glob.glob(os.path.join(checkpoints_dir, '*.pth.tar'))
     for checkpoint in checkpoints_paths:
-        gcs_checkpoint_path = os.path.join(output_dir,
-                                           os.path.basename(checkpoint))
+        gcs_checkpoint_path = os.path.join(output_dir, os.path.basename(checkpoint))
         gfile.copy(checkpoint, gcs_checkpoint_path)
 
 
@@ -75,24 +72,24 @@ class ComputeLossFn(nn.Module):
         super().__init__()
         self.loss_fn = loss_fn
 
-    def forward(
-            self, model: nn.Module, x: torch.Tensor, y: torch.Tensor, _: int
-    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+    def forward(self, model: nn.Module, x: torch.Tensor, y: torch.Tensor,
+                _: int) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         output = model(x)
         return self.loss_fn(output, y), output, None
 
 
 @dataclasses.dataclass
 class AdvTrainState(bits.TrainState):
-    compute_loss_fn: Callable[
-        [nn.Module, torch.Tensor, torch.Tensor, int],
-        Tuple[torch.Tensor, torch.Tensor,
-              Optional[torch.Tensor]]] = None  # type: ignore
+    # pytype: disable=annotation-type-mismatch
+    compute_loss_fn: Callable[[nn.Module, torch.Tensor, torch.Tensor, int],
+                              Tuple[torch.Tensor, torch.Tensor,
+                                    Optional[torch.Tensor]]] = None  # type: ignore
     eps_schedule: attacks.EpsSchedule = None  # type: ignore
+    # pytype: enable=annotation-type-mismatch
 
     @classmethod
     def from_bits(cls, instance: bits.TrainState, **kwargs):
-        return cls(model=instance.model,
+        return cls(model=instance.model,  # type: ignore
                    train_loss=instance.train_loss,
                    eval_loss=instance.eval_loss,
                    updater=instance.updater,

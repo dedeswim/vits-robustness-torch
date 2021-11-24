@@ -8,10 +8,8 @@ training processes on each of the training nodes.
 
 import importlib
 import os
-import subprocess
 import sys
 from argparse import REMAINDER, ArgumentParser
-from typing import IO, Optional
 
 import torch_xla.distributed.xla_multiprocessing as xmp
 
@@ -21,23 +19,20 @@ def parse_args():
     Helper function parsing the command line options
     @retval ArgumentParser
     """
-    parser = ArgumentParser(
-        description="PyTorch distributed training launch helper utility"
-        "that will spawn up multiple distributed processes")
+    parser = ArgumentParser(description="PyTorch distributed training launch helper utility"
+                            "that will spawn up multiple distributed processes")
 
     # Optional arguments for the launch helper
-    parser.add_argument(
-        "--num-devices",
-        type=int,
-        default=1,
-        help="The number of XLA devices to use for distributed training")
+    parser.add_argument("--num-devices",
+                        type=int,
+                        default=1,
+                        help="The number of XLA devices to use for distributed training")
 
     # positional
-    parser.add_argument(
-        "script",
-        type=str,
-        help="The full path to the single device training script to be launched"
-        "in parallel, followed by all the arguments for the training script")
+    parser.add_argument("script",
+                        type=str,
+                        help="The full path to the single device training script to be launched"
+                        "in parallel, followed by all the arguments for the training script")
 
     # rest from the training program
     parser.add_argument('script_args', nargs=REMAINDER)
