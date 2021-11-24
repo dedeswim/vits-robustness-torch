@@ -1,6 +1,6 @@
 import functools
 import math
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Callable, Dict, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -199,7 +199,8 @@ class TRADESLoss(nn.Module):
     def forward(self, model: nn.Module, x: torch.Tensor, y: torch.Tensor,
                 epoch: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_size = x.size(0)
-        # model.eval()  # FIXME: understand why with eval the gradient of BatchNorm crashes
+        # model.eval()  # FIXME: understand why with eval the gradient
+        # of BatchNorm crashes
         output_softmax = F.softmax(model(x.detach()), dim=-1)
         x_adv = self.attack(model, x, output_softmax, epoch)
         model.train()

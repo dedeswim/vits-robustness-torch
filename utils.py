@@ -10,13 +10,9 @@ import torch
 from tensorflow.io import gfile  # flake8: disable=import-error
 from timm import bits
 from timm.data import PreprocessCfg
-from timm.data.dataset_factory import create_dataset
 from torch import nn
-from torchvision import datasets
 
 import attacks
-
-_DATASETS = {'cifar10': datasets.CIFAR10, 'cifar100': datasets.CIFAR100}
 
 
 def get_outdir(path: str, *paths: str, inc=False) -> str:
@@ -112,8 +108,3 @@ class AdvTrainState(bits.TrainState):
 @dataclasses.dataclass
 class MyPreprocessCfg(PreprocessCfg):
     normalize: bool = True
-
-
-class ScaleIn0To1:
-    def __call__(self, x: torch.Tensor) -> torch.Tensor:
-        return x + 1 / 2

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """ ImageNet Validation Script
 
-This is intended to be a lean and easily modifiable ImageNet validation script for evaluating pretrained
-models or training checkpoints against ImageNet or similarly organized image datasets. It prioritizes
-canonical PyTorch, standard Python style, and good performance. Repurpose as you see fit.
+This is intended to be a lean and easily modifiable ImageNet validation script
+for evaluating pretrained models or training checkpoints against ImageNet or
+similarly organized image datasets. It prioritizes canonical PyTorch, standard
+Python style, and good performance. Repurpose as you see fit.
 
 Hacked together by Ross Wightman (https://github.com/rwightman)
 """
@@ -13,10 +14,12 @@ import glob
 import logging
 import os
 from collections import OrderedDict
+from typing import Dict
 
 import torch
 import torch.nn as nn
 import torch.nn.parallel
+import yaml
 from tensorflow.io import gfile
 from timm.bits import (AccuracyTopK, AvgTensor, Monitor, Tracker,
                        initialize_device)
@@ -44,12 +47,11 @@ parser.add_argument('--split',
                     metavar='NAME',
                     default='validation',
                     help='dataset split (default: validation)')
-parser.add_argument(
-    '--dataset-download',
-    action='store_true',
-    default=False,
-    help=
-    'Allow download of dataset for torch/ and tfds/ datasets that support it.')
+parser.add_argument('--dataset-download',
+                    action='store_true',
+                    default=False,
+                    help='Allow download of dataset for torch/ '
+                    'and tfds/ datasets that support it.')
 parser.add_argument('--model',
                     '-m',
                     metavar='NAME',
@@ -78,9 +80,8 @@ parser.add_argument(
     nargs=3,
     type=int,
     metavar='N N N',
-    help=
-    'Input all image dimensions (d h w, e.g. --input-size 3 224 224), uses model default if empty'
-)
+    help='Input all image dimensions (d h w, e.g. --input-size 3 224 224), '
+    'uses model default if empty')
 parser.add_argument('--crop-pct',
                     default=None,
                     type=float,
@@ -146,13 +147,11 @@ parser.add_argument('--test-pool',
                     dest='test_pool',
                     action='store_true',
                     help='enable test time pool')
-parser.add_argument(
-    '--pin-mem',
-    action='store_true',
-    default=False,
-    help=
-    'Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.'
-)
+parser.add_argument('--pin-mem',
+                    action='store_true',
+                    default=False,
+                    help='Pin CPU memory in DataLoader for more'
+                    'efficient (sometimes) transfer to GPU.')
 parser.add_argument('--channels-last',
                     action='store_true',
                     default=False,
@@ -228,6 +227,11 @@ parser.add_argument('--attack-boundaries',
                     type=int,
                     metavar='L H',
                     help='Boundaries of projection')
+parser.add_argument(
+    '--log-wandb',
+    action='store_true',
+    default=False,
+    help='Log results to wandb using the run stored in the bucket')
 
 
 def validate(args):
@@ -274,7 +278,6 @@ def validate(args):
         model = torch.jit.script(model)
 
     # FIXME device
-    # FIXME fix the fact that in the attack logits go through log_softmax twice
     model, criterion = dev_env.to_device(model, nn.CrossEntropyLoss())
     model.to(dev_env.device)
 
@@ -365,7 +368,7 @@ def validate(args):
             tracker.mark_iter()
             if last_step or step_idx % args.log_freq == 0:
                 top1, top5 = accuracy.compute().values()
-                adv_top1, adv_top5 = adv_accuracy.compute().values()
+                robust_top1, robust_top5 = adv_accuracy.compute().values()
                 loss_avg = losses.compute()
                 logger.log_step(
                     phase='eval',
@@ -376,8 +379,8 @@ def validate(args):
                     loss=loss_avg.item(),
                     top1=top1.item(),
                     top5=top5.item(),
-                    adv_top1=adv_top1.item(),
-                    adv_top5=adv_top5.item(),
+                    robust_top1=robust_top1.item(),
+                    robust_top5=robust_top5.item(),
                 )
 
     if real_labels is not None:
@@ -387,17 +390,17 @@ def validate(args):
     else:
         top1a, top5a = accuracy.compute().values()
         top1a, top5a = top1a.item(), top5a.item()
-        adv_top1a, adv_top5a = adv_accuracy.compute().values()
-        adv_top1a, adv_top5a = adv_top1a.item(), adv_top5a.item()
+        robust_top1a, robust_top5a = adv_accuracy.compute().values()
+        robust_top1a, robust_top5a = robust_top1a.item(), robust_top5a.item()
 
     results = OrderedDict(top1=round(top1a, 4),
                           top1_err=round(100 - top1a, 4),
                           top5=round(top5a, 4),
                           top5_err=round(100 - top5a, 4),
-                          adv_top1=round(adv_top1a, 4),
-                          adv_top1_err=round(100 - adv_top1a, 4),
-                          adv_top5=round(adv_top5a, 4),
-                          adv_top5_err=round(100 - adv_top5a, 4),
+                          robust_top1=round(robust_top1a, 4),
+                          robust_top1_err=round(100 - robust_top1a, 4),
+                          robust_top5=round(robust_top5a, 4),
+                          robust_top5_err=round(100 - robust_top5a, 4),
                           param_count=round(param_count / 1e6, 2),
                           img_size=data_config['input_size'][-1],
                           cropt_pct=eval_pp_cfg.crop_pct,
@@ -406,8 +409,8 @@ def validate(args):
                      name_map={
                          'top1': 'Acc@1',
                          'top5': 'Acc@5',
-                         'adv_top1': 'RobustAcc@1',
-                         'adv_top5': 'RobustAcc@5',
+                         'robust_top1': 'RobustAcc@1',
+                         'robust_top5': 'RobustAcc@5',
                      },
                      **results)
 
@@ -481,7 +484,42 @@ def main():
         if len(results):
             write_results(results_file, results)
     else:
-        validate(args)
+        results = validate(args)
+        if args.log_wandb:
+            log_results_to_wandb(args, results)
+
+
+def log_results_to_wandb(args: argparse.Namespace, results: Dict):
+    import wandb
+
+    # Get args file from bucket
+    assert args.checkpoint.startswith('gs://')
+    experiment_dir = os.path.dirname(args.checkpoint)
+    args_path = os.path.join(experiment_dir, 'args.yaml')
+    with gfile.GFile(args_path, mode='r') as f:
+        config = yaml.safe_load(f)
+    wandb_run_url = config["wandb_run"]
+    # Get run identifying info
+    if wandb_run_url.endswith('/'):
+        wandb_run_url = wandb_run_url[:-1]
+    wandb_run_project = wandb_run_url.split("/")[4]
+    wandb_run_entity = wandb_run_url.split("/")[3]
+    wandb_run_id = wandb_run_url.split("/")[6]
+    run = wandb.init(project=wandb_run_project,
+                     id=wandb_run_id,
+                     entity=wandb_run_entity,
+                     resume=True)
+    # Log data
+    attack = args.attack
+    eps = args.eps
+    steps = args.steps
+    prefix = f"{attack}-{steps}-{eps}"
+    dict_to_log = {
+        "top1-final": results['top1'],
+        f"{prefix}-robust_top1": results['robust_top1'],
+    }
+    run.log(dict_to_log)
+    run.finish()
 
 
 def write_results(results_file, results):

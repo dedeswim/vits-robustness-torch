@@ -30,23 +30,21 @@ import yaml
 from tensorflow.io import gfile
 from timm.bits import (AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv,
                        Monitor, Tracker, TrainCfg, TrainServices, TrainState,
-                       distribute_bn, initialize_device, monitor,
+                       distribute_bn, initialize_device,
                        setup_model_and_optimizer)
 from timm.data import (AugCfg, AugMixDataset, MixupCfg, create_loader_v2,
                        resolve_data_config)
 from timm.data.dataset_factory import create_dataset
 from timm.loss import *
 from timm.models import convert_splitbn_model, create_model, safe_model_name
-from timm.models.byobnet import expand_blocks_cfg
 from timm.optim import optimizer_kwargs
 from timm.scheduler import create_scheduler
-from timm.utils import (get_outdir, random_seed, setup_default_logging,
-                        unwrap_model)
+from timm.utils import random_seed, setup_default_logging, unwrap_model
 from torchvision import transforms
 
 import attacks
 import utils
-from attacks import _SCHEDULES, AttackFn, EpsSchedule
+from attacks import _SCHEDULES, AttackFn
 
 _logger = logging.getLogger('train')
 
@@ -903,8 +901,8 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
 
     if dev_env.primary:
         _logger.info(
-            f'Model {safe_model_name(args.model)} created, param count:{sum([m.numel() for m in model.parameters()])}'
-        )
+            f'Model {safe_model_name(args.model)} created, '
+            f'param count:{sum([m.numel() for m in model.parameters()])}')
 
     # enable split bn (separate bn stats per batch-portion)
     if args.split_bn:
@@ -1001,7 +999,8 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         train_cfg=train_cfg,
     )
 
-    schedule = _SCHEDULES[args.eps_schedule](args.attack_eps, args.eps_schedule_period)
+    schedule = _SCHEDULES[args.eps_schedule](args.attack_eps,
+                                             args.eps_schedule_period)
 
     train_state = utils.AdvTrainState.from_bits(
         train_state, compute_loss_fn=compute_loss_fn, eps_schedule=schedule)
