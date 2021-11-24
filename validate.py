@@ -463,12 +463,12 @@ def log_results_to_wandb(args: argparse.Namespace, results: Dict):
     run = wandb.init(project=wandb_run_project, id=wandb_run_id, entity=wandb_run_entity, resume=True)
     # Log data
     attack = args.attack
-    eps = args.eps
-    steps = args.steps
+    eps = args.attack_eps
+    steps = args.attack_steps
     prefix = f"{attack}-{steps}-{eps}"
     dict_to_log = {
-        "top1-final": results['top1'],
-        f"{prefix}-robust_top1": results['robust_top1'],
+        "eval_top1-final": results['top1'],
+        f"{prefix}-eval_robust_top1_final": results['robust_top1'],
     }
     run.log(dict_to_log)
     run.finish()
