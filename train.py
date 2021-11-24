@@ -507,7 +507,7 @@ parser.add_argument('--attack-eps',
                     default=4 / 255,
                     type=float,
                     metavar='EPS',
-                    help='The epsilon to use for the attack (default 8/255)')
+                    help='The epsilon to use for the attack (default 4/255)')
 parser.add_argument('--eps-schedule',
                     default='constant',
                     type=str,
@@ -544,6 +544,11 @@ parser.add_argument('--attack-boundaries',
                     type=int,
                     metavar='L H',
                     help='Boundaries of projection')
+parser.add_argument('--eval-attack-eps',
+                    default=None,
+                    type=float,
+                    metavar='EPS',
+                    help='The epsilon to use for the attack (default the same as `--attack-eps`)')
 
 
 def _parse_args():
@@ -659,8 +664,9 @@ def main():
     if args.adv_training is not None:
         attack_criterion = nn.NLLLoss(reduction="sum")
         dev_env.to_device(attack_criterion)
+        eps = args.eval_attack_eps or args.attack_eps
         eval_attack = attacks.make_attack(args.attack,
-                                          args.attack_eps,
+                                          eps,
                                           args.attack_lr,
                                           args.attack_steps,
                                           args.attack_norm,
