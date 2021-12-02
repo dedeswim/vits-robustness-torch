@@ -306,6 +306,10 @@ parser.add_argument('--aa',
                     default=None,
                     metavar='NAME',
                     help='Use AutoAugment policy. "v0" or "original". (default: None)'),
+parser.add_argument('--no-aa',
+                    action='store_true',
+                    default=False,
+                    help='Disables AutoAugment by overriding the content of `--aa`')
 parser.add_argument('--aug-splits',
                     type=int,
                     default=0,
@@ -905,6 +909,7 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     if args.no_aug:
         train_aug_cfg = None
     else:
+        aa = args.aa if not args.no_aa else None
         train_aug_cfg = AugCfg(
             re_prob=args.reprob,
             re_mode=args.remode,
@@ -914,7 +919,7 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
             hflip_prob=args.hflip,
             vflip_prob=args.vflip,
             color_jitter=args.color_jitter,
-            auto_augment=args.aa,
+            auto_augment=aa,
             num_aug_splits=args.aug_splits,
         )
 
