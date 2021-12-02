@@ -511,7 +511,7 @@ parser.add_argument('--attack-eps',
                     default=4 / 255,
                     type=float,
                     metavar='EPS',
-                    help='The epsilon to use for the attack (default 8/255)')
+                    help='The epsilon to use for the attack (default 4/255)')
 parser.add_argument('--eps-schedule',
                     default='constant',
                     type=str,
@@ -522,6 +522,11 @@ parser.add_argument('--eps-schedule-period',
                     type=int,
                     metavar='EPOCHS',
                     help='How many epochs before reaching full eps')
+parser.add_argument('--zero-eps-epochs',
+                    default=0,
+                    type=int,
+                    metavar='EPOCHS',
+                    help='How many epochs eps should be 0')
 parser.add_argument('--attack-lr',
                     default=1 / 255,
                     type=float,
@@ -543,6 +548,11 @@ parser.add_argument('--attack-boundaries',
                     type=int,
                     metavar='L H',
                     help='Boundaries of projection')
+parser.add_argument('--eval-attack-eps',
+                    default=None,
+                    type=float,
+                    metavar='EPS',
+                    help='The epsilon to use for the attack (default the same as `--attack-eps`)')
 
 
 def _parse_args():
@@ -658,8 +668,9 @@ def main():
     if args.adv_training is not None:
         attack_criterion = nn.NLLLoss(reduction="sum")
         dev_env.to_device(attack_criterion)
+        eps = args.eval_attack_eps or args.attack_eps
         eval_attack = attacks.make_attack(args.attack,
-                                          args.attack_eps,
+                                          eps,
                                           args.attack_lr,
                                           args.attack_steps,
                                           args.attack_norm,
@@ -818,6 +829,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                                                  args.eps_schedule,
                                                  args.attack_eps,
                                                  args.eps_schedule_period,
+                                                 args.zero_eps_epochs,
                                                  args.attack_lr,
                                                  args.attack_steps,
                                                  args.attack_norm,
@@ -830,6 +842,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                                                  args.eps_schedule,
                                                  args.attack_eps,
                                                  args.eps_schedule_period,
+                                                 args.zero_eps_epochs,
                                                  args.attack_lr,
                                                  args.attack_steps,
                                                  args.attack_norm,
@@ -858,7 +871,11 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         train_cfg=train_cfg,
     )
 
-    schedule = _SCHEDULES[args.eps_schedule](args.attack_eps, args.eps_schedule_period)
+    schedule = _SCHEDULES[args.eps_schedule](
+        args.attack_eps,
+        args.eps_schedule_period,
+        args.zero_eps_epochs,
+    )
 
     train_state = utils.AdvTrainState.from_bits(train_state,
                                                 compute_loss_fn=compute_loss_fn,
