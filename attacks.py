@@ -42,6 +42,8 @@ def pgd(model: nn.Module,
         targeted: bool = False) -> torch.Tensor:
     local_project_fn = functools.partial(project_fn, eps=eps, boundaries=boundaries)
     x_adv = init_fn(x, eps, project_fn, boundaries)
+    if len(y.size()) > 1:
+        y = y.argmax(dim=-1)
     for _ in range(steps):
         x_adv.requires_grad_()
         loss = criterion(
@@ -169,7 +171,7 @@ class AdvTrainingLoss(nn.Module):
 
     def forward(self, model: nn.Module, x: torch.Tensor, y: torch.Tensor,
                 epoch: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        x_adv = self.attack(model, x, y.argmax(dim=-1), epoch)
+        x_adv = self.attack(model, x, y, epoch)
         logits, logits_adv = model(x), model(x_adv)
         loss = self.criterion(logits_adv, y)
         return loss, logits, logits_adv
