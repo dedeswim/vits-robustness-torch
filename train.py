@@ -979,8 +979,6 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
                                                                                    mean=data_config['mean'],
                                                                                    std=data_config['std'])
 
-    _logger.info(loader_train.dataset.transform.transforms)
-
     eval_pp_cfg = utils.MyPreprocessCfg(  # type: ignore
         input_size=data_config['input_size'],
         interpolation=data_config['interpolation'],
