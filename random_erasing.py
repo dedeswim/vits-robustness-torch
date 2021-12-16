@@ -6,17 +6,15 @@ from torch import nn
 from timm.data.random_erasing import RandomErasing
 
 
-def _get_pixels(per_pixel, rand_color, patch_size, mean, std, a, b, dtype=torch.float32, device='cuda'):
+def _get_pixels(per_pixel, rand_color, patch_size, a, b, dtype=torch.float32, device='cuda'):
+    mean = (b - a) / 2
+    std = mean / 2
     if per_pixel:
         pixels = torch.empty(patch_size, dtype=dtype, device=device)
-        # trunc_normal_ wants scalars as mean and std, so we need to loop to pass scalars
-        for i in range(patch_size[0]):
-            nn.init.trunc_normal_(pixels[i], mean[i], std[i], a, b)
+        nn.init.trunc_normal_(pixels, mean, std, a, b)
     elif rand_color:
-        # trunc_normal_ wants scalars as mean and std, so we need to loop to pass scalars
         pixels = torch.empty((patch_size[0], 1, 1), dtype=dtype, device=device)
-        for i in range(patch_size[0]):
-            nn.init.trunc_normal_(pixels[i], mean[i], std[i], a, b)
+        nn.init.trunc_normal_(pixels, mean, std, a, b)
     else:
         pixels = torch.zeros((patch_size[0], 1, 1), dtype=dtype, device=device)
     return pixels
@@ -53,7 +51,7 @@ class NotNormalizedRandomErasing(RandomErasing):
                     top = random.randint(0, img_h - h)
                     left = random.randint(0, img_w - w)
                     img[:, top:top + h, left:left + w] = _get_pixels(
-                        self.per_pixel, self.rand_color, (chan, h, w), self.mean, self.std, self.a, self.b,
+                        self.per_pixel, self.rand_color, (chan, h, w), self.a, self.b,
                         dtype=dtype,
                         device=device)
                     break

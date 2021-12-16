@@ -75,7 +75,7 @@ ratio:
 recount: 1
 recovery_interval: 0
 remode: pixel
-reprob: 0.0
+reprob: 0.25
 resplit: false
 resume: ''
 save_images: false

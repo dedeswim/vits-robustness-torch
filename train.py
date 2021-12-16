@@ -1032,8 +1032,6 @@ def train_one_epoch(
     for step_idx, (sample, target) in enumerate(loader):
         tracker.mark_iter_data_end()
 
-        _logger.info(f"min={sample.min()}, max={sample.max()}")
-
         # FIXME move forward + loss into model 'task' wrapper
         with dev_env.autocast():
             loss, output, adv_output = state.compute_loss_fn(state.model, sample, target, state.epoch)
