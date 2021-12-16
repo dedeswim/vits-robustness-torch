@@ -43,6 +43,7 @@ from torchvision import transforms
 import attacks
 import utils
 from attacks import _SCHEDULES, AttackFn
+from random_erasing import NotNormalizedRandomErasing
 
 _logger = logging.getLogger('train')
 
@@ -501,7 +502,7 @@ parser.add_argument('--adv-training',
                     default=None,
                     type=str,
                     help='Enables adversarial training with the specified '
-                    'technique (`trades` or `pgd`)')
+                         'technique (`trades` or `pgd`)')
 parser.add_argument('--attack',
                     default='pgd',
                     type=str,
@@ -756,7 +757,6 @@ def main():
 
 
 def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
-
     model = create_model(
         args.model,
         pretrained=args.pretrained,
@@ -972,6 +972,15 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
             loader_train.mean = None
             loader_train.std = None
 
+    if args.reprob > 0:
+        loader_train.dataset.transform.transforms[-1] = NotNormalizedRandomErasing(probability=train_aug_cfg.re_prob,
+                                                                                   mode=train_aug_cfg.re_mode,
+                                                                                   count=train_aug_cfg.re_count,
+                                                                                   mean=data_config['mean'],
+                                                                                   std=data_config['std'])
+
+    _logger.info(loader_train.dataset.transform.transforms)
+
     eval_pp_cfg = utils.MyPreprocessCfg(  # type: ignore
         input_size=data_config['input_size'],
         interpolation=data_config['interpolation'],
@@ -1004,10 +1013,10 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
 
 
 def train_one_epoch(
-    state: utils.AdvTrainState,
-    services: TrainServices,
-    loader,
-    dev_env: DeviceEnv,
+        state: utils.AdvTrainState,
+        services: TrainServices,
+        loader,
+        dev_env: DeviceEnv,
 ):
     tracker = Tracker()
     # FIXME move loss meter into task specific TaskMetric
@@ -1022,6 +1031,8 @@ def train_one_epoch(
     tracker.mark_iter()
     for step_idx, (sample, target) in enumerate(loader):
         tracker.mark_iter_data_end()
+
+        _logger.info(f"min={sample.min()}, max={sample.max()}")
 
         # FIXME move forward + loss into model 'task' wrapper
         with dev_env.autocast():
@@ -1056,16 +1067,16 @@ def train_one_epoch(
 
 
 def after_train_step(
-    state: TrainState,
-    services: TrainServices,
-    dev_env: DeviceEnv,
-    step_idx: int,
-    step_end_idx: int,
-    tracker: Tracker,
-    loss_meter: AvgTensor,
-    accuracy_meter: AccuracyTopK,
-    robust_accuracy_meter: AccuracyTopK,
-    tensors: Tuple[torch.Tensor, ...],
+        state: TrainState,
+        services: TrainServices,
+        dev_env: DeviceEnv,
+        step_idx: int,
+        step_end_idx: int,
+        tracker: Tracker,
+        loss_meter: AvgTensor,
+        accuracy_meter: AccuracyTopK,
+        robust_accuracy_meter: AccuracyTopK,
+        tensors: Tuple[torch.Tensor, ...],
 ):
     """
     After the core loss / backward / gradient apply step, we perform all non-gradient related
