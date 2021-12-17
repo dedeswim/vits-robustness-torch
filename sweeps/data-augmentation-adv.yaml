@@ -1,3 +1,4 @@
+program: train.py
 method: grid
 metric:
   name: eval_robust_top1
