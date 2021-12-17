@@ -15,6 +15,7 @@ command:
   - "tfds/image_net_subset"
   - "--config"
   - "configs/xcit-nano-adv-training.yaml"
+  - "--log-wandb"
   - ${args}
 parameters:
   mixup:

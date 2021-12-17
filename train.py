@@ -125,9 +125,13 @@ def main():
         # Log run notes and *true* output dir to wandb
         notes = args.run_notes
         if output_dir.startswith("gs://"):
-            notes += f"\nBucket: {output_dir}\n"
-        wandb_run.notes = args.run_notes  # type: ignore
-        wandb_run.config.update({"output": output_dir}, allow_val_change=True)
+            exp_dir = output_dir.split("gs://")[-1]
+            bucket_url = f"https://console.cloud.google.com/storage/{exp_dir}"
+            notes += f"Bucket: {exp_dir}\n"
+            wandb_run.config.update({"output": bucket_url}, allow_val_change=True)
+        else:
+            wandb_run.config.update({"output": output_dir}, allow_val_change=True)
+        wandb_run.notes = notes
         wandb_run_field = f"wandb_run: {wandb_run.url}\n"  # type: ignore
         # Log wandb run url to args file
         if output_dir.startswith("gs://"):
