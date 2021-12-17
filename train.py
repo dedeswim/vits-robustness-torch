@@ -387,10 +387,6 @@ parser.add_argument('--drop-block',
                     help='Drop block rate (default: None)')
 
 # Batch norm parameters (only works with gen_efficientnet based models currently)
-parser.add_argument('--bn-tf',
-                    action='store_true',
-                    default=False,
-                    help='Use Tensorflow BatchNorm defaults for models that support it (default: False)')
 parser.add_argument('--bn-momentum',
                     type=float,
                     default=None,
@@ -766,7 +762,6 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         drop_path_rate=args.drop_path,
         drop_block_rate=args.drop_block,
         global_pool=args.gp,
-        bn_tf=args.bn_tf,
         bn_momentum=args.bn_momentum,
         bn_eps=args.bn_eps,
         scriptable=args.torchscript,
