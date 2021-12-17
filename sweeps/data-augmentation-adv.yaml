@@ -1,0 +1,33 @@
+method: grid
+metric:
+  name: eval_robust_top1
+  goal: maximize
+command:
+  - ${env}
+  - ${interpreter}
+  - launch_xla.py
+  - "--num-devices"
+  - "8"
+  - ${program}
+  - "gs://vits-robustness/tensorflow_datasets/"
+  - "--dataset"
+  - "tfds/image_net_subset"
+  - "--config"
+  - "configs/xcit-nano-adv-training.yaml"
+  - ${args}
+parameters:
+  mixup:
+    values:
+      - 0
+      - 0.8
+  cutmix:
+    values:
+      - 0
+      - 1
+  aa:
+    values:
+      - None
+      - rand-m9-mstd0.5-inc1
+  reprob:
+    values:
+      - 0.25
