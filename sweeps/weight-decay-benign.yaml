@@ -18,7 +18,7 @@ command:
   - "--log-wandb"
   - ${args}
 parameters:
-  weight_decay:
+  weight-decay:
     values:
       - 0
       - 0.001
