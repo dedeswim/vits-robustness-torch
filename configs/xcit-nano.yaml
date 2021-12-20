@@ -1,4 +1,4 @@
-aa: rand-m9-mstd0.5-inc1
+aa: None 
 aug_splits: 0
 batch_size: 128
 bce_loss: false
@@ -13,7 +13,7 @@ clip_mode: norm
 color_jitter: 0.4
 cooldown_epochs: 10
 crop_pct: null
-cutmix: 1.0
+cutmix: 0.0
 cutmix_minmax: null
 data_dir: gs://vits-robustness/tensorflow_datasets/
 dataset: tfds/image_net_subset
@@ -75,7 +75,7 @@ ratio:
 recount: 1
 recovery_interval: 0
 remode: pixel
-reprob: 0.25
+reprob: 0.0
 resplit: false
 resume: ''
 save_images: false

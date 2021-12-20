@@ -1,0 +1,29 @@
+program: train.py
+method: grid
+metric:
+  name: eval_robust_top1
+  goal: maximize
+command:
+  - ${env}
+  - ${interpreter}
+  - launch_xla.py
+  - "--num-devices"
+  - "8"
+  - ${program}
+  - "gs://vits-robustness/tensorflow_datasets/"
+  - "--dataset"
+  - "tfds/image_net_subset"
+  - "--config"
+  - "configs/xcit-nano-adv-training.yaml"
+  - "--log-wandb"
+  - ${args}
+parameters:
+  weight_decay:
+    - 0
+    - 0.001
+    - 0.01
+    - 0.05
+    - 0.1
+    - 0.5
+    - 1
+

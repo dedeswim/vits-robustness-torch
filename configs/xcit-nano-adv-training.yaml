@@ -1,4 +1,4 @@
-aa: rand-m9-mstd0.5-inc1
+aa: None 
 adv_training: pgd
 amp: false
 attack: pgd
@@ -23,7 +23,7 @@ clip_mode: norm
 color_jitter: 0.4
 cooldown_epochs: 10
 crop_pct: null
-cutmix: 1.0
+cutmix: 0.0
 cutmix_minmax: null
 data_dir: /mnt/disks/persist/tensorflow_datasets/
 dataset: tfds/image_net_subset
@@ -61,7 +61,7 @@ lr_noise_pct: 0.67
 lr_noise_std: 1.0
 mean: null
 min_lr: 1.0e-05
-mixup: 0.8
+mixup: 0.0
 mixup_mode: batch
 mixup_off_epoch: 0
 mixup_prob: 1.0
@@ -87,7 +87,7 @@ ratio:
 recount: 1
 recovery_interval: 0
 remode: pixel
-reprob: 0.25
+reprob: 0.0
 resplit: false
 resume: ''
 save_images: false
