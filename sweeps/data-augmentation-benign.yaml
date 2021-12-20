@@ -1,7 +1,7 @@
 program: train.py
 method: grid
 metric:
-  name: eval_robust_top1
+  name: eval_top1
   goal: maximize
 command:
   - ${env}
@@ -14,7 +14,7 @@ command:
   - "--dataset"
   - "tfds/image_net_subset"
   - "--config"
-  - "configs/xcit-nano-adv-training.yaml"
+  - "configs/xcit-nano.yaml"
   - "--log-wandb"
   - ${args}
 parameters:

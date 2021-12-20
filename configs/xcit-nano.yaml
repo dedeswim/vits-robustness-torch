@@ -15,7 +15,7 @@ cooldown_epochs: 10
 crop_pct: null
 cutmix: 1.0
 cutmix_minmax: null
-data_dir: /mnt/disks/persist/tensorflow_datasets/
+data_dir: gs://vits-robustness/tensorflow_datasets/
 dataset: tfds/image_net_subset
 decay_epochs: 100
 decay_rate: 0.1
@@ -65,7 +65,7 @@ num_classes: null
 opt: adamw
 opt_betas: null
 opt_eps: 1.0e-08
-output: ''
+output: gs://vits-robustness/output/train
 patience_epochs: 10
 pin_mem: false
 pretrained: false
