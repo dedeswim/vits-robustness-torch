@@ -10,7 +10,7 @@ command:
   - "--num-devices"
   - "8"
   - ${program}
-  - "gs://vits-robustness/tensorflow_datasets/"
+  - "gs://large-ds/tensorflow_datasets/"
   - "--dataset"
   - "tfds/image_net_subset"
   - "--config"
