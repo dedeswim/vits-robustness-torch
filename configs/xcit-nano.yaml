@@ -15,7 +15,7 @@ cooldown_epochs: 10
 crop_pct: null
 cutmix: 0.0
 cutmix_minmax: null
-data_dir: gs://vits-robustness/tensorflow_datasets/
+data_dir: gs://large-ds/tensorflow_datasets
 dataset: tfds/image_net_subset
 decay_epochs: 100
 decay_rate: 0.1

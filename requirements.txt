@@ -1,4 +1,5 @@
 wandb
+tensorflow-cpu
 timm
 torch
 torchvision

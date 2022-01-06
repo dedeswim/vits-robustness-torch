@@ -16,7 +16,7 @@ cooldown_epochs: 10
 crop_pct: null
 cutmix: 1.0
 cutmix_minmax: null
-data_dir: /mnt/disks/persist/tensorflow_datasets/
+data_dir: gs://large-ds/tensorflow_datasets
 dataset: tfds/imagenet2012:5.1.0
 decay_epochs: 100
 decay_rate: 0.1

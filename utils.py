@@ -5,9 +5,9 @@ import os
 import tempfile
 from typing import Callable, Optional, Tuple
 
+import tensorflow as tf
 import timm
 import torch
-from tensorflow.io import gfile  # flake8: disable=import-error
 from timm import bits
 from timm.data import PreprocessCfg
 from torch import nn
@@ -19,7 +19,7 @@ def get_outdir(path: str, *paths: str, inc=False) -> str:
     """Adapted to get out dir from GCS"""
     outdir = os.path.join(path, *paths)
     if path.startswith('gs://'):
-        os_module = gfile
+        os_module = tf.io.gfile
         exists_fn = lambda x: os_module.exists(x)
     else:
         os_module = os
@@ -41,7 +41,7 @@ def get_outdir(path: str, *paths: str, inc=False) -> str:
 def load_model_from_gcs(checkpoint_path: str, model_name: str):
     with tempfile.TemporaryDirectory() as dst:
         local_checkpoint_path = os.path.join(dst, os.path.basename(checkpoint_path))
-        gfile.copy(checkpoint_path, local_checkpoint_path)
+        tf.io.gfile.copy(checkpoint_path, local_checkpoint_path)
         model = timm.create_model(model_name, checkpoint_path=local_checkpoint_path)
     return model
 
@@ -50,16 +50,17 @@ def upload_checkpoints_gcs(checkpoints_dir: str, output_dir: str):
     checkpoints_paths = glob.glob(os.path.join(checkpoints_dir, '*.pth.tar'))
     for checkpoint in checkpoints_paths:
         gcs_checkpoint_path = os.path.join(output_dir, os.path.basename(checkpoint))
-        gfile.copy(checkpoint, gcs_checkpoint_path)
+        tf.io.gfile.copy(checkpoint, gcs_checkpoint_path)
 
 
 class GCSSummaryCsv(bits.monitor.SummaryCsv):
     """SummaryCSV version to work with GCS"""
+
     def __init__(self, output_dir, filename='summary.csv'):
         super().__init__(output_dir, filename)
 
     def update(self, row_dict):
-        with gfile.GFile(self.filename, mode='a') as cf:
+        with tf.io.gfile.GFile(self.filename, mode='a') as cf:
             dw = csv.DictWriter(cf, fieldnames=row_dict.keys())
             if self.needs_header:  # first iteration (epoch == 1 can't be used)
                 dw.writeheader()
@@ -85,6 +86,7 @@ class AdvTrainState(bits.TrainState):
                               Tuple[torch.Tensor, torch.Tensor,
                                     Optional[torch.Tensor]]] = None  # type: ignore
     eps_schedule: attacks.EpsSchedule = None  # type: ignore
+
     # pytype: enable=annotation-type-mismatch
 
     @classmethod

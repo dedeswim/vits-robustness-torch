@@ -23,9 +23,9 @@ from dataclasses import replace
 from datetime import datetime
 from typing import Optional, Tuple
 
+import tensorflow as tf
 import torch
 import torch.nn as nn
-from tensorflow.io import gfile
 from timm.bits import (AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv, Monitor, Tracker, TrainCfg,
                        TrainServices, TrainState, distribute_bn, initialize_device, setup_model_and_optimizer)
 from timm.data import (AugCfg, AugMixDataset, MixupCfg, create_loader_v2, resolve_data_config)
@@ -104,7 +104,7 @@ def main():
                                                max_history=args.checkpoint_hist)
 
         if output_dir.startswith("gs://"):
-            with gfile.GFile(os.path.join(output_dir, 'args.yaml'), 'w') as f:
+            with tf.io.gfile.GFile(os.path.join(output_dir, 'args.yaml'), 'w') as f:
                 f.write(args_text)
         else:
             with open(os.path.join(output_dir, 'args.yaml'), 'w') as f:
@@ -135,7 +135,7 @@ def main():
         wandb_run_field = f"wandb_run: {wandb_run.url}\n"  # type: ignore
         # Log wandb run url to args file
         if output_dir.startswith("gs://"):
-            with gfile.GFile(os.path.join(output_dir, 'args.yaml'), 'a') as f:
+            with tf.io.gfile.GFile(os.path.join(output_dir, 'args.yaml'), 'a') as f:
                 f.write(wandb_run_field)
         else:
             with open(os.path.join(output_dir, 'args.yaml'), 'a') as f:

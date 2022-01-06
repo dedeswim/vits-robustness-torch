@@ -25,8 +25,8 @@ cooldown_epochs: 10
 crop_pct: null
 cutmix: 1.0
 cutmix_minmax: null
-data_dir: /mnt/disks/persist/tensorflow_datasets/
-dataset: tfds/image_net_subset
+data_dir: ~/torch_data
+dataset: torch/cifar10
 decay_epochs: 100
 decay_rate: 0.1
 dist_bn: reduce
@@ -71,8 +71,9 @@ momentum: 0.9
 no_aug: false
 no_normalize: true
 no_resume_opt: false
+no_normalize: true
 num_classes: null
-opt: adamw
+opt: sgd
 opt_betas: null
 opt_eps: 1.0e-08
 output: ''

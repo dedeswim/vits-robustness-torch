@@ -16,11 +16,11 @@ import os
 from collections import OrderedDict
 from typing import Dict
 
+import tensorflow as tf
 import torch
 import torch.nn as nn
 import torch.nn.parallel
 import yaml
-from tensorflow.io import gfile
 from timm.bits import (AccuracyTopK, AvgTensor, Monitor, Tracker, initialize_device)
 from timm.data import (RealLabelsImagenet, create_dataset, create_loader_v2, resolve_data_config)
 from timm.models import (apply_test_time_pool, create_model, is_model, list_models, load_checkpoint)
@@ -451,7 +451,7 @@ def log_results_to_wandb(args: argparse.Namespace, results: Dict):
     assert args.checkpoint.startswith('gs://')
     experiment_dir = os.path.dirname(args.checkpoint)
     args_path = os.path.join(experiment_dir, 'args.yaml')
-    with gfile.GFile(args_path, mode='r') as f:
+    with tf.io.gfile.GFile(args_path, mode='r') as f:
         config = yaml.safe_load(f)
     wandb_run_url = config["wandb_run"]
     # Get run identifying info
@@ -476,7 +476,7 @@ def log_results_to_wandb(args: argparse.Namespace, results: Dict):
 
 def write_results(results_file, results):
     if results_file.startswith("gs://"):
-        open_f = gfile.GFile
+        open_f = tf.io.gfile.GFile
     else:
         open_f = open
     with open_f(results_file, mode='w') as cf:
