@@ -111,6 +111,6 @@ validation_batch_size: null
 vflip: 0.0
 warmup_epochs: 10
 warmup_lr: 1.e-6
-weight_decay: 0.05
+weight_decay: 0.5
 workers: 4
 adv-training: true
