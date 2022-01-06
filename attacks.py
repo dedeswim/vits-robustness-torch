@@ -156,7 +156,7 @@ def make_attack(attack: str,
 
     def autoattack_fn(model: nn.Module, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         assert isinstance(eps, float)
-        adversary = AutoAttack(model, norm.capitalize(), eps=eps, device=device)
+        adversary = AutoAttack(model, norm.capitalize(), eps=eps, device=device, verbose=False)
         x_adv = adversary.run_standard_evaluation(x, y, bs=x.size(0))
         return x_adv  # type: ignore
 

@@ -12,6 +12,7 @@ import argparse
 import csv
 import glob
 import logging
+import math
 import os
 from collections import OrderedDict
 from typing import Dict
@@ -47,7 +48,7 @@ parser.add_argument('--dataset-download',
                     action='store_true',
                     default=False,
                     help='Allow download of dataset for torch/ '
-                    'and tfds/ datasets that support it.')
+                         'and tfds/ datasets that support it.')
 parser.add_argument('--model',
                     '-m',
                     metavar='NAME',
@@ -76,7 +77,7 @@ parser.add_argument('--input-size',
                     type=int,
                     metavar='N N N',
                     help='Input all image dimensions (d h w, e.g. --input-size 3 224 224), '
-                    'uses model default if empty')
+                         'uses model default if empty')
 parser.add_argument('--crop-pct', default=None, type=float, metavar='N', help='Input image center crop pct')
 parser.add_argument('--mean',
                     type=float,
@@ -129,7 +130,7 @@ parser.add_argument('--pin-mem',
                     action='store_true',
                     default=False,
                     help='Pin CPU memory in DataLoader for more'
-                    'efficient (sometimes) transfer to GPU.')
+                         'efficient (sometimes) transfer to GPU.')
 parser.add_argument('--channels-last',
                     action='store_true',
                     default=False,
@@ -205,6 +206,11 @@ parser.add_argument('--log-wandb',
                     action='store_true',
                     default=False,
                     help='Log results to wandb using the run stored in the bucket')
+parser.add_argument('--num-examples',
+                    default=5000,
+                    type=int,
+                    metavar='EXAMPLES',
+                    help='Number of examples to use for the evaluation (default 5000)')
 
 
 def validate(args):
@@ -295,6 +301,12 @@ def validate(args):
     attack = attacks.make_attack(args.attack, args.attack_eps, args.attack_lr, args.attack_steps,
                                  args.attack_norm, args.attack_boundaries, attack_criterion)
 
+    if args.attack == 'autoattack':
+        tot_batches = args.num_examples // args.batch_size
+        _logger.info(f"Limiting attack to {tot_batches} batches for AutoAttack")
+    else:
+        tot_batches = len(loader)
+
     model.eval()
     num_steps = len(loader)
     with torch.no_grad():
@@ -345,6 +357,8 @@ def validate(args):
                     robust_top1=robust_top1.item(),
                     robust_top5=robust_top5.item(),
                 )
+            if step_idx >= tot_batches:
+                break
 
     if real_labels is not None:
         # real labels mode replaces topk values at the end
