@@ -77,7 +77,7 @@ num_classes: null
 opt: adamw
 opt_betas: null
 opt_eps: 1.0e-08
-output: gs://vits-robustness/output/train
+output: gs://robust-vits/
 patience_epochs: 10
 pin_mem: false
 pretrained: false

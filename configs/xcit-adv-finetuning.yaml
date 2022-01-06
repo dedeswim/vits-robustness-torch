@@ -73,12 +73,11 @@ momentum: 0.9
 no_aug: false
 no_normalize: true
 no_resume_opt: false
-no_normalize: true
 num_classes: null
 opt: sgd
 opt_betas: null
 opt_eps: 1.0e-08
-output: ''
+output: gs://robust-vits/
 patience_epochs: 10
 pin_mem: false
 pretrained: false
