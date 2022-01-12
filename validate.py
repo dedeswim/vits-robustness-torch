@@ -12,7 +12,6 @@ import argparse
 import csv
 import glob
 import logging
-import math
 import os
 from collections import OrderedDict
 from typing import Dict
@@ -29,6 +28,7 @@ from timm.utils import natural_key, setup_default_logging
 from torchvision import transforms
 
 import attacks
+import models  # Import needed to register the extra models that are not in timm
 import utils
 
 _logger = logging.getLogger('validate')
@@ -301,12 +301,6 @@ def validate(args):
     attack = attacks.make_attack(args.attack, args.attack_eps, args.attack_lr, args.attack_steps,
                                  args.attack_norm, args.attack_boundaries, attack_criterion)
 
-    if args.attack == 'autoattack':
-        tot_batches = args.num_examples // args.batch_size
-        _logger.info(f"Limiting attack to {tot_batches} batches for AutoAttack")
-    else:
-        tot_batches = len(loader)
-
     model.eval()
     num_steps = len(loader)
     with torch.no_grad():
@@ -357,8 +351,6 @@ def validate(args):
                     robust_top1=robust_top1.item(),
                     robust_top5=robust_top5.item(),
                 )
-            if step_idx >= tot_batches:
-                break
 
     if real_labels is not None:
         # real labels mode replaces topk values at the end

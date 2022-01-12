@@ -39,6 +39,7 @@ from timm.utils import random_seed, setup_default_logging, unwrap_model
 from torchvision import transforms
 
 import attacks
+import models  # Import needed to register the extra models that are not in timm
 import utils
 from arg_parser import parse_args
 from attacks import _SCHEDULES, AttackFn
