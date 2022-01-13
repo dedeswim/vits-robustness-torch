@@ -238,8 +238,8 @@ def main():
 def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
     with tempfile.TemporaryDirectory() as dst:
         if args.initial_checkpoint is not None and args.initial_checkpoint.startswith("gs://"):
-            checkpoint_path = os.path.join(dst, os.path.basename(args.checkpoint_path))
-            tf.io.gfile.copy(args.checkpoint_path, checkpoint_path)
+            checkpoint_path = os.path.join(dst, os.path.basename(args.initial_checkpoint))
+            tf.io.gfile.copy(args.initial_checkpoint, checkpoint_path)
         else:
             checkpoint_path = args.initial_checkpoint
         model = create_model(
