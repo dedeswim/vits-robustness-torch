@@ -35,9 +35,9 @@ drop_block: null
 drop_connect: null
 drop_path: 0.05
 epoch_repeats: 0.0
-epochs: 100
+epochs: 30
 eps_schedule: linear 
-eps_schedule_period: 30
+eps_schedule_period: 10
 eval_metric: robust_top1
 experiment: xcit-adv-finetuning
 force_cpu: false
@@ -51,7 +51,7 @@ jsd_loss: false
 local_rank: 0
 log_interval: 50
 log_wandb: false
-lr: 5.0e-4
+lr: 5.0e-6
 lr_cycle_decay: 0.5
 lr_cycle_limit: 1
 lr_cycle_mul: 1.0
@@ -60,7 +60,7 @@ lr_noise: null
 lr_noise_pct: 0.67
 lr_noise_std: 1.0
 mean: null
-min_lr: 1.0e-05
+min_lr: 5.0e-6
 mixup: 0.0
 mixup_mode: batch
 mixup_off_epoch: 0
@@ -109,7 +109,7 @@ use_multi_epochs_loader: false
 val_split: test
 validation_batch_size: null
 vflip: 0.0
-warmup_epochs: 10
+warmup_epochs: 5
 warmup_lr: 1.0e-06
 weight_decay: 0.5
 workers: 4
