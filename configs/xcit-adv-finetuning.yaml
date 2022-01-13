@@ -10,7 +10,7 @@ attack_lr: 0.034509804
 attack_norm: linf
 attack_steps: 1
 aug_splits: 0
-batch_size: 128
+batch_size: 64 
 bce_loss: false
 bce_target_thresh: null
 bn_eps: null
@@ -74,7 +74,7 @@ no_aug: false
 no_normalize: true
 no_resume_opt: false
 num_classes: null
-opt: sgd
+opt: adamw 
 opt_betas: null
 opt_eps: 1.0e-08
 output: gs://robust-vits/
@@ -111,5 +111,5 @@ validation_batch_size: null
 vflip: 0.0
 warmup_epochs: 10
 warmup_lr: 1.0e-06
-weight_decay: 0.05
+weight_decay: 0.5
 workers: 4
