@@ -236,19 +236,26 @@ def main():
 
 
 def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
-    model = create_model(
-        args.model,
-        pretrained=args.pretrained,
-        num_classes=args.num_classes,
-        drop_rate=args.drop,
-        drop_connect_rate=args.drop_connect,  # DEPRECATED, use drop_path
-        drop_path_rate=args.drop_path,
-        drop_block_rate=args.drop_block,
-        global_pool=args.gp,
-        bn_momentum=args.bn_momentum,
-        bn_eps=args.bn_eps,
-        scriptable=args.torchscript,
-        checkpoint_path=args.initial_checkpoint)
+    with tempfile.TemporaryDirectory() as dst:
+        if args.initial_checkpoint is not None and args.initial_checkpoint.startswith("gs://"):
+            checkpoint_path = os.path.join(dst, os.path.basename(args.checkpoint_path))
+            tf.io.gfile.copy(args.checkpoint_path, checkpoint_path)
+        else:
+            checkpoint_path = args.initial_checkpoint
+        model = create_model(
+            args.model,
+            pretrained=args.pretrained,
+            num_classes=args.num_classes,
+            drop_rate=args.drop,
+            drop_connect_rate=args.drop_connect,  # DEPRECATED, use drop_path
+            drop_path_rate=args.drop_path,
+            drop_block_rate=args.drop_block,
+            global_pool=args.gp,
+            bn_momentum=args.bn_momentum,
+            bn_eps=args.bn_eps,
+            scriptable=args.torchscript,
+            checkpoint_path=checkpoint_path)
+
     if args.num_classes is None:
         assert hasattr(model,
                        'num_classes'), 'Model must have `num_classes` attr if not set on cmd line/config.'
