@@ -10,7 +10,7 @@ attack_norm: linf
 attack_steps: 1
 amp: false
 aug_splits: 0
-batch_size: 128
+batch_size: 64 
 bce_loss: false
 bce_target_thresh: null
 bn_eps: null
