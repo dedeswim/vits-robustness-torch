@@ -24,6 +24,8 @@ command:
   - "0.8"
   - "--aa"
   - "rand-m9-mstd0.5-inc1"
+  - "--weight-decay"
+  - "0.05"
   - ${args}
 parameters:
   eps-schedule-period:
