@@ -16,6 +16,14 @@ command:
   - "--config"
   - "configs/xcit-nano-adv-training.yaml"
   - "--log-wandb"
+  - "--reprob"
+  - "0.25"
+  - "--cutmix"
+  - "1.0"
+  - "--mixup"
+  - "0.8"
+  - "--aa"
+  - "rand-m9-mstd0.5-inc1"
   - ${args}
 parameters:
   eps-schedule-period:
