@@ -1,0 +1,27 @@
+program: train.py
+method: grid
+metric:
+  name: eval_robust_top1
+  goal: maximize
+command:
+  - ${env}
+  - ${interpreter}
+  - launch_xla.py
+  - "--num-devices"
+  - "8"
+  - ${program}
+  - "gs://large-ds/tensorflow_datasets/"
+  - "--dataset"
+  - "tfds/image_net_subset"
+  - "--config"
+  - "configs/xcit-nano-adv-training.yaml"
+  - "--log-wandb"
+  - ${args}
+parameters:
+  eps-schedule-period:
+    values:
+      - 0
+      - 5
+      - 10
+      - 20
+      - 30
