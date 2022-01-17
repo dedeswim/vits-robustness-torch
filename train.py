@@ -149,7 +149,8 @@ def main():
         attack_criterion = nn.NLLLoss(reduction="sum")
         dev_env.to_device(attack_criterion)
         eps = args.eval_attack_eps or args.attack_eps
-        eval_attack = attacks.make_attack(args.attack,
+        eval_attack_name = args.attack.split("targeted_")[-1]
+        eval_attack = attacks.make_attack(eval_attack_name,
                                           eps,
                                           args.attack_lr,
                                           args.attack_steps,
@@ -319,7 +320,8 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                                                  args.attack_steps,
                                                  args.attack_norm,
                                                  args.attack_boundaries,
-                                                 criterion=attack_criterion)
+                                                 criterion=attack_criterion,
+                                                 num_classes=model.num_classes)
         compute_loss_fn = attacks.AdvTrainingLoss(train_attack, train_loss_fn)
     elif args.adv_training is not None and args.adv_training == "trades":
         attack_criterion = nn.KLDivLoss(reduction="sum")

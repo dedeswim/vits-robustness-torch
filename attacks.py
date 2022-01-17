@@ -39,9 +39,14 @@ def pgd(model: nn.Module,
         init_fn: InitFn,
         project_fn: ProjectFn,
         criterion: nn.Module,
-        targeted: bool = False) -> torch.Tensor:
+        targeted: bool = False,
+        num_classes: Optional[int] = None,
+        random_targets: bool = False) -> torch.Tensor:
     local_project_fn = functools.partial(project_fn, eps=eps, boundaries=boundaries)
     x_adv = init_fn(x, eps, project_fn, boundaries)
+    if random_targets:
+        assert num_classes is not None
+        y = torch.randint_like(y, 0, num_classes)
     if len(y.size()) > 1:
         y = y.argmax(dim=-1)
     for _ in range(steps):
@@ -61,7 +66,8 @@ def pgd(model: nn.Module,
     return x_adv
 
 
-_ATTACKS = {"pgd": pgd}
+_ATTACKS = {"pgd": pgd, "targeted_pgd":
+            functools.partial(pgd, targeted=True, random_targets=True)}
 _INIT_PROJECT_FN: Dict[str, Tuple[InitFn, ProjectFn]] = {"linf": (init_linf, project_linf)}
 
 
@@ -96,7 +102,7 @@ _SCHEDULES: Dict[str, ScheduleMaker] = {
 
 def make_train_attack(attack_name: str, schedule: str, final_eps: float, period: int, zero_eps_epochs: int,
                       step_size: float, steps: int, norm: Norm, boundaries: Tuple[float, float],
-                      criterion: nn.Module) -> TrainAttackFn:
+                      criterion: nn.Module, num_classes: int) -> TrainAttackFn:
     if attack_name in {"ll", "soft-labels"}:
         attack_mode: Optional[str] = attack_name
         attack_name = "pgd"
@@ -105,11 +111,6 @@ def make_train_attack(attack_name: str, schedule: str, final_eps: float, period:
     attack_fn = _ATTACKS[attack_name]
     init_fn, project_fn = _INIT_PROJECT_FN[norm]
     schedule_fn = _SCHEDULES[schedule](final_eps, period, zero_eps_epochs)
-
-    if attack_mode == "ll":
-        targeted = True
-    else:
-        targeted = False
 
     def attack(model: nn.Module, x: torch.Tensor, y: torch.Tensor, step: int) -> torch.Tensor:
         eps = schedule_fn(step)
@@ -129,7 +130,7 @@ def make_train_attack(attack_name: str, schedule: str, final_eps: float, period:
                          init_fn=init_fn,
                          project_fn=project_fn,
                          criterion=criterion,
-                         targeted=targeted)
+                         num_classes=num_classes)
 
     return attack
 
