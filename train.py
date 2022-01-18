@@ -271,17 +271,24 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         assert args.aug_splits > 1
         model = convert_splitbn_model(model, max(args.aug_splits, 2))
 
-    train_state = setup_model_and_optimizer(dev_env=dev_env,
-                                            model=model,
-                                            optimizer=args.opt,
-                                            optimizer_cfg=optimizer_kwargs(cfg=args),
-                                            clip_fn=args.clip_mode if args.clip_grad is not None else None,
-                                            clip_value=args.clip_grad,
-                                            model_ema=args.model_ema,
-                                            model_ema_decay=args.model_ema_decay,
-                                            resume_path=args.resume,
-                                            use_syncbn=args.sync_bn,
-                                            resume_opt=not args.no_resume_opt)
+    with tempfile.TemporaryDirectory() as dst:
+        if args.resume is not None and args.resume.startswith("gs://"):
+            resume_checkpoint_path = os.path.join(dst, os.path.basename(args.resume))
+            tf.io.gfile.copy(args.resume, resume_checkpoint_path)
+        else:
+            resume_checkpoint_path = args.initial_checkpoint
+
+        train_state = setup_model_and_optimizer(dev_env=dev_env,
+                                                model=model,
+                                                optimizer=args.opt,
+                                                optimizer_cfg=optimizer_kwargs(cfg=args),
+                                                clip_fn=args.clip_mode if args.clip_grad is not None else None,
+                                                clip_value=args.clip_grad,
+                                                model_ema=args.model_ema,
+                                                model_ema_decay=args.model_ema_decay,
+                                                resume_path=resume_checkpoint_path,
+                                                use_syncbn=args.sync_bn,
+                                                resume_opt=not args.no_resume_opt)
 
     # setup learning rate schedule and starting epoch
     # FIXME move into updater?
