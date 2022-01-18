@@ -61,10 +61,8 @@ def pgd(model: nn.Module,
             x_adv = x_adv.detach() - step_size * torch.sign(grad)
         else:
             x_adv = x_adv.detach() + step_size * torch.sign(grad)
-        assert not torch.all(torch.isnan(x_adv)), "x_adv has NaN components before projection"
 
         x_adv = local_project_fn(x, x_adv)
-        assert not torch.all(torch.isnan(x_adv)), "x_adv has NaN components after projection"
 
     return x_adv
 
