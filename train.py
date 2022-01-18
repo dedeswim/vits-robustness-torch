@@ -528,6 +528,17 @@ def train_one_epoch(
         with dev_env.autocast():
             loss, output, adv_output = state.compute_loss_fn(state.model, sample, target, state.epoch)
 
+        loss.backward(retain_graph=True)
+        grads_norm = sum(
+            torch.sum(p.grad.detach() ** 2).item() for p in state.model.parameters() if p.requires_grad
+        )
+
+        print(f"[{step_idx}/{step_end_idx}] Grads norm = {grads_norm}")
+
+        assert not torch.all(torch.isnan(output)), "output has NaN components"
+        assert not torch.all(torch.isnan(adv_output)), "adv_output has NaN components"
+        assert not torch.all(torch.isnan(loss)), "loss has NaN components"
+
         state.updater.apply(loss)
 
         tracker.mark_iter_step_end()
