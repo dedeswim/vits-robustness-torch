@@ -243,6 +243,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
             tf.io.gfile.copy(args.initial_checkpoint, checkpoint_path)
         else:
             checkpoint_path = args.initial_checkpoint
+        
         model = create_model(
             args.model,
             pretrained=args.pretrained,
@@ -276,7 +277,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
             resume_checkpoint_path = os.path.join(dst, os.path.basename(args.resume))
             tf.io.gfile.copy(args.resume, resume_checkpoint_path)
         else:
-            resume_checkpoint_path = args.initial_checkpoint
+            resume_checkpoint_path = args.resume
 
         train_state = setup_model_and_optimizer(dev_env=dev_env,
                                                 model=model,
