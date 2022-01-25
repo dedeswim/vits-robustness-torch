@@ -181,6 +181,13 @@ def main():
                 if dev_env.primary:
                     _logger.info("Distributing BatchNorm running means and vars")
                 distribute_bn(train_state.model, args.dist_bn == 'reduce', dev_env)
+            """train_metrics = evaluate(train_state.model,
+                                     train_state.train_loss,
+                                     loader_train,
+                                     services.monitor,
+                                     dev_env,
+                                     attack=eval_attack,
+                                     phase_suffix='train')"""
 
             eval_metrics = evaluate(train_state.model,
                                     train_state.eval_loss,
@@ -564,8 +571,8 @@ def train_one_epoch(
     tracker = Tracker()
     # FIXME move loss meter into task specific TaskMetric
     loss_meter = AvgTensor()
-    accuracy_meter = AccuracyTopK()
-    robust_accuracy_meter = AccuracyTopK()
+    accuracy_meter = AccuracyTopK(topk=(1, ))
+    robust_accuracy_meter = AccuracyTopK(topk=(1, ))
 
     state.model.train()
     state.updater.reset()  # zero-grad
@@ -603,7 +610,11 @@ def train_one_epoch(
     if hasattr(state.updater.optimizer, 'sync_lookahead'):
         state.updater.optimizer.sync_lookahead()
 
-    return OrderedDict([('loss', loss_meter.compute().item()), ('eps', state.eps_schedule(state.epoch)),
+    top1, = accuracy_meter.compute().values()
+    robust_top1, = robust_accuracy_meter.compute().values()
+
+    return OrderedDict([('loss', loss_meter.compute().item()), ('top1', top1.item()),
+                        ('robust_top1', robust_top1.item()), ('eps', state.eps_schedule(state.epoch)),
                         ('lr', state.updater.get_average_lr())])
 
 
@@ -647,6 +658,8 @@ def after_train_step(
     with torch.no_grad():
         output, adv_output, target, loss = tensors
         loss_meter.update(loss, output.shape[0])
+        accuracy_meter.update(output, target)
+        robust_accuracy_meter.update(adv_output, target)
 
         if state.model_ema is not None:
             # FIXME should ema update be included here or in train / updater step? does it matter?
@@ -658,6 +671,8 @@ def after_train_step(
         if services.monitor is not None and end_step or (step_idx + 1) % cfg.log_interval == 0:
             global_batch_size = dev_env.world_size * output.shape[0]
             loss_avg = loss_meter.compute()
+            top1, = accuracy_meter.compute().values()
+            robust_top1, = robust_accuracy_meter.compute().values()
 
             if services.monitor is not None:
                 lr_avg = state.updater.get_average_lr()
@@ -666,6 +681,8 @@ def after_train_step(
                                           step_end_idx=step_end_idx,
                                           epoch=state.epoch,
                                           loss=loss_avg.item(),
+                                          top1=top1.item(),
+                                          robust_top1=robust_top1.item(),
                                           rate=tracker.get_avg_iter_rate(global_batch_size),
                                           lr=lr_avg)
 
