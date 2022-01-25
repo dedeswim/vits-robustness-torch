@@ -342,7 +342,8 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                                                  args.attack_steps,
                                                  args.attack_norm,
                                                  args.attack_boundaries,
-                                                 criterion=attack_criterion)
+                                                 criterion=attack_criterion,
+                                                 num_classes=model.num_classes)
         compute_loss_fn = attacks.TRADESLoss(train_attack, train_loss_fn, 6.0)
     else:
         compute_loss_fn = utils.ComputeLossFn(train_loss_fn)
