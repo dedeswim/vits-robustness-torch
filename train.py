@@ -659,7 +659,8 @@ def after_train_step(
         output, adv_output, target, loss = tensors
         loss_meter.update(loss, output.shape[0])
         accuracy_meter.update(output, target)
-        robust_accuracy_meter.update(adv_output, target)
+        if adv_output is not None:
+            robust_accuracy_meter.update(adv_output, target)
 
         if state.model_ema is not None:
             # FIXME should ema update be included here or in train / updater step? does it matter?
