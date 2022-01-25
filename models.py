@@ -1,4 +1,3 @@
-import timm
 from timm.models import cait, xcit
 from timm.models.helpers import build_model_with_cfg
 from timm.models.registry import register_model

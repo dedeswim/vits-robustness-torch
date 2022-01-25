@@ -502,6 +502,8 @@ parser.add_argument('--eval-attack-eps',
                     metavar='EPS',
                     help='The epsilon to use for the attack (default the same as `--attack-eps`)')
 
+parser.add_argument('--finetune', default='', help='Finetune from checkpoint')
+
 
 def parse_args():
     # Do we have a config file to parse?

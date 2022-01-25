@@ -26,6 +26,7 @@ from typing import Optional, Tuple
 import tensorflow as tf
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from timm.bits import (AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv, Monitor, Tracker, TrainCfg,
                        TrainServices, TrainState, distribute_bn, initialize_device, setup_model_and_optimizer)
 from timm.data import (AugCfg, AugMixDataset, MixupCfg, create_loader_v2, resolve_data_config)
@@ -243,7 +244,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
             tf.io.gfile.copy(args.initial_checkpoint, checkpoint_path)
         else:
             checkpoint_path = args.initial_checkpoint
-        
+
         model = create_model(
             args.model,
             pretrained=args.pretrained,
@@ -257,6 +258,52 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
             bn_eps=args.bn_eps,
             scriptable=args.torchscript,
             checkpoint_path=checkpoint_path)
+
+    if args.finetune is not None:
+        # Adapted from https://github.com/facebookresearch/deit/blob/main/main.py#L250
+        with tempfile.TemporaryDirectory() as dst:
+            if args.finetune.startswith("gs://"):
+                checkpoint_path = os.path.join(dst, os.path.basename(args.finetune))
+                tf.io.gfile.copy(args.finetune, checkpoint_path)
+            else:
+                checkpoint_path = args.finetune
+
+            checkpoint = torch.load(checkpoint_path, map_location='cpu')
+
+        checkpoint_model = checkpoint['model']
+        state_dict = model.state_dict()
+        for k in ['head.weight', 'head.bias', 'head_dist.weight', 'head_dist.bias']:
+            if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
+                print(f"Removing key {k} from pretrained checkpoint")
+                del checkpoint_model[k]
+
+        # interpolate position embedding
+        try:
+            pos_embed_checkpoint = checkpoint_model['pos_embed']
+            embedding_size = pos_embed_checkpoint.shape[-1]
+            num_patches = model.patch_embed.num_patches
+            num_extra_tokens = model.pos_embed.shape[-2] - num_patches
+            # height (== width) for the checkpoint position embedding
+            orig_size = int((pos_embed_checkpoint.shape[-2] - num_extra_tokens)**0.5)
+            # height (== width) for the new position embedding
+            new_size = int(num_patches**0.5)
+            # class_token and dist_token are kept unchanged
+            extra_tokens = pos_embed_checkpoint[:, :num_extra_tokens]
+            # only the position tokens are interpolated
+            pos_tokens = pos_embed_checkpoint[:, num_extra_tokens:]
+            pos_tokens = pos_tokens.reshape(-1, orig_size, orig_size, embedding_size).permute(0, 3, 1, 2)
+            pos_tokens = F.interpolate(pos_tokens,
+                                       size=(new_size, new_size),
+                                       mode='bicubic',
+                                       align_corners=False)
+            pos_tokens = pos_tokens.permute(0, 2, 3, 1).flatten(1, 2)
+            new_pos_embed = torch.cat((extra_tokens, pos_tokens), dim=1)
+            checkpoint_model['pos_embed'] = new_pos_embed
+        except KeyError:
+            # Model has no learned positional embeddings, skipping interpolation
+            pass
+
+        model.load_state_dict(checkpoint_model, strict=False)
 
     if args.num_classes is None:
         assert hasattr(model,
@@ -279,17 +326,18 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         else:
             resume_checkpoint_path = args.resume
 
-        train_state = setup_model_and_optimizer(dev_env=dev_env,
-                                                model=model,
-                                                optimizer=args.opt,
-                                                optimizer_cfg=optimizer_kwargs(cfg=args),
-                                                clip_fn=args.clip_mode if args.clip_grad is not None else None,
-                                                clip_value=args.clip_grad,
-                                                model_ema=args.model_ema,
-                                                model_ema_decay=args.model_ema_decay,
-                                                resume_path=resume_checkpoint_path,
-                                                use_syncbn=args.sync_bn,
-                                                resume_opt=not args.no_resume_opt)
+        train_state = setup_model_and_optimizer(
+            dev_env=dev_env,
+            model=model,
+            optimizer=args.opt,
+            optimizer_cfg=optimizer_kwargs(cfg=args),
+            clip_fn=args.clip_mode if args.clip_grad is not None else None,
+            clip_value=args.clip_grad,
+            model_ema=args.model_ema,
+            model_ema_decay=args.model_ema_decay,
+            resume_path=resume_checkpoint_path,
+            use_syncbn=args.sync_bn,
+            resume_opt=not args.no_resume_opt)
 
     # setup learning rate schedule and starting epoch
     # FIXME move into updater?
@@ -469,11 +517,12 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
             loader_train.std = None
 
     if args.reprob > 0:
-        loader_train.dataset.transform.transforms[-1] = NotNormalizedRandomErasing(probability=train_aug_cfg.re_prob,
-                                                                                   mode=train_aug_cfg.re_mode,
-                                                                                   count=train_aug_cfg.re_count,
-                                                                                   mean=data_config['mean'],
-                                                                                   std=data_config['std'])
+        loader_train.dataset.transform.transforms[-1] = NotNormalizedRandomErasing(
+            probability=train_aug_cfg.re_prob,
+            mode=train_aug_cfg.re_mode,
+            count=train_aug_cfg.re_count,
+            mean=data_config['mean'],
+            std=data_config['std'])
 
     eval_pp_cfg = utils.MyPreprocessCfg(  # type: ignore
         input_size=data_config['input_size'],
@@ -507,10 +556,10 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
 
 
 def train_one_epoch(
-        state: utils.AdvTrainState,
-        services: TrainServices,
-        loader,
-        dev_env: DeviceEnv,
+    state: utils.AdvTrainState,
+    services: TrainServices,
+    loader,
+    dev_env: DeviceEnv,
 ):
     tracker = Tracker()
     # FIXME move loss meter into task specific TaskMetric
@@ -559,16 +608,16 @@ def train_one_epoch(
 
 
 def after_train_step(
-        state: TrainState,
-        services: TrainServices,
-        dev_env: DeviceEnv,
-        step_idx: int,
-        step_end_idx: int,
-        tracker: Tracker,
-        loss_meter: AvgTensor,
-        accuracy_meter: AccuracyTopK,
-        robust_accuracy_meter: AccuracyTopK,
-        tensors: Tuple[torch.Tensor, ...],
+    state: TrainState,
+    services: TrainServices,
+    dev_env: DeviceEnv,
+    step_idx: int,
+    step_end_idx: int,
+    tracker: Tracker,
+    loss_meter: AvgTensor,
+    accuracy_meter: AccuracyTopK,
+    robust_accuracy_meter: AccuracyTopK,
+    tensors: Tuple[torch.Tensor, ...],
 ):
     """
     After the core loss / backward / gradient apply step, we perform all non-gradient related

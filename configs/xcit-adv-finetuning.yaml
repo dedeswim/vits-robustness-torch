@@ -73,7 +73,7 @@ momentum: 0.9
 no_aug: false
 no_normalize: true
 no_resume_opt: false
-num_classes: null
+num_classes: 10
 opt: adamw 
 opt_betas: null
 opt_eps: 1.0e-08
