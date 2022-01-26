@@ -18,8 +18,6 @@ command:
   - "gs://robust-vits/xcit-adv-pretraining-3/best.pth.tar"
   - "--attack-steps"
   - "5"
-  - "--min-lr"
-  - ${lr}
   - ${args}
 parameters:
   lr:
