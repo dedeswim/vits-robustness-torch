@@ -48,7 +48,7 @@ parser.add_argument('--dataset-download',
                     action='store_true',
                     default=False,
                     help='Allow download of dataset for torch/ '
-                         'and tfds/ datasets that support it.')
+                    'and tfds/ datasets that support it.')
 parser.add_argument('--model',
                     '-m',
                     metavar='NAME',
@@ -77,7 +77,7 @@ parser.add_argument('--input-size',
                     type=int,
                     metavar='N N N',
                     help='Input all image dimensions (d h w, e.g. --input-size 3 224 224), '
-                         'uses model default if empty')
+                    'uses model default if empty')
 parser.add_argument('--crop-pct', default=None, type=float, metavar='N', help='Input image center crop pct')
 parser.add_argument('--mean',
                     type=float,
@@ -130,7 +130,7 @@ parser.add_argument('--pin-mem',
                     action='store_true',
                     default=False,
                     help='Pin CPU memory in DataLoader for more'
-                         'efficient (sometimes) transfer to GPU.')
+                    'efficient (sometimes) transfer to GPU.')
 parser.add_argument('--channels-last',
                     action='store_true',
                     default=False,
@@ -232,7 +232,13 @@ def validate(args):
         args.num_classes = model.num_classes
 
     if args.checkpoint.startswith('gs://'):
-        model = utils.load_model_from_gcs(args.checkpoint, args.model)
+        model = utils.load_model_from_gcs(args.checkpoint,
+                                          args.model,
+                                          pretrained=args.pretrained,
+                                          num_classes=args.num_classes,
+                                          in_chans=3,
+                                          global_pool=args.gp,
+                                          scriptable=args.torchscript)
     else:
         load_checkpoint(model, args.checkpoint, args.use_ema)
 

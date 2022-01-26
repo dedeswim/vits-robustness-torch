@@ -38,11 +38,11 @@ def get_outdir(path: str, *paths: str, inc=False) -> str:
     return outdir
 
 
-def load_model_from_gcs(checkpoint_path: str, model_name: str):
+def load_model_from_gcs(checkpoint_path: str, model_name: str, **kwargs):
     with tempfile.TemporaryDirectory() as dst:
         local_checkpoint_path = os.path.join(dst, os.path.basename(checkpoint_path))
         tf.io.gfile.copy(checkpoint_path, local_checkpoint_path)
-        model = timm.create_model(model_name, checkpoint_path=local_checkpoint_path)
+        model = timm.create_model(model_name, checkpoint_path=local_checkpoint_path, **kwargs)
     return model
 
 
