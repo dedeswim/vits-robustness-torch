@@ -1,0 +1,32 @@
+program: train.py
+method: grid
+metric:
+  name: eval_robust_top1
+  goal: maximize
+command:
+  - ${env}
+  - ${interpreter}
+  - launch_xla.py
+  - "--num-devices"
+  - "8"
+  - ${program}
+  - "~/torch_data/"
+  - "--config"
+  - "configs/xcit-adv-finetuning.yaml"
+  - "--log-wandb"
+  - "--finetune"
+  - "gs://robust-vits/xcit-adv-pretraining-3/best.pth.tar"
+  - "--attack-steps"
+  - "5"
+  - "--min-lr"
+  - ${lr}
+  - ${args}
+parameters:
+  lr:
+    values:
+      - 5.0e-4
+      - 5.0e-5
+      - 5.0e-6
+      - 5.0e-7
+      - 5.0e-8
+      - 5.0e-9

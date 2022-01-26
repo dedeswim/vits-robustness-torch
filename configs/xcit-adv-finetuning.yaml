@@ -8,7 +8,7 @@ attack_boundaries:
 attack_eps: 0.031372549
 attack_lr: 0.034509804
 attack_norm: linf
-attack_steps: 1
+attack_steps: 5
 aug_splits: 0
 batch_size: 64 
 bce_loss: false
@@ -36,7 +36,7 @@ drop_connect: null
 drop_path: 0.05
 epoch_repeats: 0.0
 epochs: 30
-eps_schedule: linear 
+eps_schedule: constant 
 eps_schedule_period: 10
 eval_metric: robust_top1
 experiment: xcit-adv-finetuning
