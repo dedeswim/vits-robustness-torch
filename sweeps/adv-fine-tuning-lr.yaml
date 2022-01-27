@@ -16,8 +16,6 @@ command:
   - "--log-wandb"
   - "--finetune"
   - "gs://robust-vits/xcit-adv-pretraining-3/best.pth.tar"
-  - "--attack-steps"
-  - "5"
   - ${args}
 parameters:
   lr:

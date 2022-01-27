@@ -6,7 +6,7 @@ attack_boundaries:
 - 0
 - 1
 attack_eps: 0.031372549
-attack_lr: 0.034509804
+attack_lr: 0.009411765
 attack_norm: linf
 attack_steps: 5
 aug_splits: 0
