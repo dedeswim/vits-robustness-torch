@@ -18,7 +18,7 @@ def cait_xs24_224(pretrained=False, **kwargs):
 def xcit_small_12_p16_160(pretrained=False, **kwargs):
     model_kwargs = dict(
         patch_size=16, embed_dim=384, depth=12, num_heads=8, eta=1.0, tokens_norm=True, **kwargs)
-    default_cfg = xcit._cfg("", input_size=(3, 160, 160))
+    default_cfg = xcit._cfg("xcit_small_12_p16_160", input_size=(3, 160, 160))
     return build_model_with_cfg(
         xcit.XCiT, 'xcit_small_12_p16_160', pretrained, default_cfg=default_cfg,
         pretrained_filter_fn=xcit.checkpoint_filter_fn, **model_kwargs)
@@ -48,7 +48,7 @@ def xcit_small_12_p16_80(pretrained=False, **kwargs):
 def xcit_small_12_p8_32(pretrained=False, **kwargs):
     model_kwargs = dict(
         patch_size=8, embed_dim=384, depth=12, num_heads=8, eta=1.0, tokens_norm=True, **kwargs)
-    default_cfg = xcit._cfg("", input_size=(3, 32, 32))
+    default_cfg = xcit._cfg("xcit_small_12_p8_32", input_size=(3, 32, 32))
     return build_model_with_cfg(
-        xcit.XCiT, 'xcit_small_12_p16_160', pretrained, default_cfg=default_cfg,
+        xcit.XCiT, 'xcit_small_12_p8_32', pretrained, default_cfg=default_cfg,
         pretrained_filter_fn=xcit.checkpoint_filter_fn, **model_kwargs)
