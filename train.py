@@ -658,6 +658,10 @@ def after_train_step(
     with torch.no_grad():
         output, adv_output, target, loss = tensors
         loss_meter.update(loss, output.shape[0])
+
+        if len(target.size()) > 1:
+            target = target.argmax(dim=-1)
+
         accuracy_meter.update(output, target)
         if adv_output is not None:
             robust_accuracy_meter.update(adv_output, target)
