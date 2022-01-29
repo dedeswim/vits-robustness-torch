@@ -523,7 +523,7 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
             loader_train.mean = None
             loader_train.std = None
 
-    if args.reprob > 0:
+    if args.reprob > 0 and train_aug_cfg is not None:
         loader_train.dataset.transform.transforms[-1] = NotNormalizedRandomErasing(
             probability=train_aug_cfg.re_prob,
             mode=train_aug_cfg.re_mode,

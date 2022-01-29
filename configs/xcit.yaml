@@ -1,7 +1,7 @@
 aa: rand-m9-mstd0.5-inc1
 amp: false
 aug_splits: 0
-batch_size: 256
+batch_size: 64
 bce_loss: false
 bce_target_thresh: null
 bn_eps: null
@@ -60,6 +60,7 @@ model_ema: false
 model_ema_decay: 0.99996
 momentum: 0.9
 no_aug: false
+no_normalize: true
 no_resume_opt: false
 num_classes: null
 opt: adamw
