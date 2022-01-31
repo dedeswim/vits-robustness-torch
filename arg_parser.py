@@ -449,7 +449,7 @@ parser.add_argument('--adv-training',
                     default=None,
                     type=str,
                     help='Enables adversarial training with the specified '
-                         'technique (`trades` or `pgd`)')
+                    'technique (`trades` or `pgd`)')
 parser.add_argument('--attack',
                     default='pgd',
                     type=str,
@@ -503,7 +503,16 @@ parser.add_argument('--eval-attack-eps',
                     help='The epsilon to use for the attack (default the same as `--attack-eps`)')
 
 parser.add_argument('--finetune', default=None, type=str, help='Finetune from checkpoint')
-
+parser.add_argument(
+    '--finetuning-patch-size',
+    default=None,
+    type=int,
+    metavar='X',
+    help='Patch size to use for fine-tuning (can be only 4 or 8). If None, the original patch size is used.')
+parser.add_argument('--reinit-patch-embedding',
+                    action='store_true',
+                    default=False,
+                    help='Re-initializes the whole patch embedder')
 
 def parse_args():
     # Do we have a config file to parse?

@@ -51,7 +51,7 @@ jsd_loss: false
 local_rank: 0
 log_interval: 50
 log_wandb: false
-lr: 5.0e-6
+lr: 5.0e-5
 lr_cycle_decay: 0.5
 lr_cycle_limit: 1
 lr_cycle_mul: 1.0

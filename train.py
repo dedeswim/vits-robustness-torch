@@ -312,6 +312,23 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
 
         model.load_state_dict(checkpoint_model, strict=False)
 
+    if args.finetuning_patch_size is not None:
+        assert args.finetuning_patch_size in {4, 8}, "Finetuning patch size can be only 4, 8 or `None`"
+        assert isinstance(model, models.xcit.XCiT), "Finetuning patch size is only supported for XCiT"
+        _logger.info(f"Adapting patch embedding for finetuning patch size {args.finetuning_patch_size}")
+        model.patch_embed.patch_size = args.finetuning_patch_size
+        if args.finetuning_patch_size == 4:
+            model.patch_embed.proj = model.patch_embed.proj[-3:]
+            model.patch_embed.proj[0] = models.xcit.conv3x3(3, model.embed_dim // 2, 2)
+        
+        elif args.finetuning_patch_size == 8:
+            if args.reinit_patch_embedding:
+                _logger.info("Re-initializing patch embedding")
+                model.patch_embed = models.xcit.ConvPatchEmbed(args.input_size[-1], 8, 3, model.embed_dim)
+            else:
+                model.patch_embed.proj = model.patch_embed.proj[-5:]
+                model.patch_embed.proj[0] = models.xcit.conv3x3(3, model.embed_dim // 4, 2)
+
     if args.num_classes is None:
         assert hasattr(model,
                        'num_classes'), 'Model must have `num_classes` attr if not set on cmd line/config.'
