@@ -247,12 +247,12 @@ def validate(args):
         load_checkpoint(model, args.checkpoint, args.use_ema)
 
     if model.patch_embed.patch_size != args.patch_size:
-        assert args.finetuning_patch_size in {4, 8}, "Finetuning patch size can be only 4, 8 or `None`"
+        assert args.patch_size in {4, 8}, "Finetuning patch size can be only 4, 8 or `None`"
         assert isinstance(model, models.xcit.XCiT), "Finetuning patch size is only supported for XCiT"
         _logger.info(f"Adapting patch embedding for finetuning patch size {args.patch_size}")
         model.patch_embed.patch_size = args.patch_size
         model.patch_embed.proj[0][0].stride = (1, 1)
-        if args.finetuning_patch_size == 4:
+        if args.patch_size == 4:
             model.patch_embed.proj[2][0].stride = (1, 1)
 
     param_count = sum([m.numel() for m in model.parameters()])
