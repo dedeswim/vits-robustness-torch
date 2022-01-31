@@ -513,6 +513,10 @@ parser.add_argument('--reinit-patch-embedding',
                     action='store_true',
                     default=False,
                     help='Re-initializes the whole patch embedder')
+parser.add_argument('--keep-patch-embedding',
+                    action='store_true',
+                    default=False,
+                    help='Re-initializes the whole patch embedder')
 
 def parse_args():
     # Do we have a config file to parse?

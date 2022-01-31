@@ -211,7 +211,11 @@ parser.add_argument('--num-examples',
                     type=int,
                     metavar='EXAMPLES',
                     help='Number of examples to use for the evaluation (default 5000)')
-
+parser.add_argument('--patch-size',
+                    default=16,
+                    type=int,
+                    metavar='N',
+                    help='The patch size to use')
 
 def validate(args):
     # might as well try to validate something
@@ -241,6 +245,15 @@ def validate(args):
                                           scriptable=args.torchscript)
     else:
         load_checkpoint(model, args.checkpoint, args.use_ema)
+
+    if model.patch_embed.patch_size != args.patch_size:
+        assert args.finetuning_patch_size in {4, 8}, "Finetuning patch size can be only 4, 8 or `None`"
+        assert isinstance(model, models.xcit.XCiT), "Finetuning patch size is only supported for XCiT"
+        _logger.info(f"Adapting patch embedding for finetuning patch size {args.patch_size}")
+        model.patch_embed.patch_size = args.patch_size
+        model.patch_embed.proj[0][0].stride = (1, 1)
+        if args.finetuning_patch_size == 4:
+            model.patch_embed.proj[2][0].stride = (1, 1)
 
     param_count = sum([m.numel() for m in model.parameters()])
     _logger.info('Model %s created, param count: %d' % (args.model, param_count))
