@@ -329,7 +329,8 @@ def validate(args):
             tracker.mark_iter_data_end()
 
             with dev_env.autocast():
-                model.train()
+                if dev_env.type_xla:
+                    model.train()
                 with torch.enable_grad():
                     adv_sample = attack(model, sample, target)
                 model.eval()
