@@ -41,13 +41,14 @@ def pgd(model: nn.Module,
         criterion: nn.Module,
         targeted: bool = False,
         num_classes: Optional[int] = None,
-        random_targets: bool = False) -> torch.Tensor:
+        random_targets: bool = False,
+        logits_y: bool = False) -> torch.Tensor:
     local_project_fn = functools.partial(project_fn, eps=eps, boundaries=boundaries)
     x_adv = init_fn(x, eps, project_fn, boundaries)
     if random_targets:
         assert num_classes is not None
         y = torch.randint_like(y, 0, num_classes)
-    if len(y.size()) > 1:
+    if len(y.size()) > 1 and not logits_y:
         y = y.argmax(dim=-1)
     for _ in range(steps):
         x_adv.requires_grad_()
@@ -103,7 +104,7 @@ _SCHEDULES: Dict[str, ScheduleMaker] = {
 
 def make_train_attack(attack_name: str, schedule: str, final_eps: float, period: int, zero_eps_epochs: int,
                       step_size: float, steps: int, norm: Norm, boundaries: Tuple[float, float],
-                      criterion: nn.Module, num_classes: int) -> TrainAttackFn:
+                      criterion: nn.Module, num_classes: int, logits_y: bool) -> TrainAttackFn:
     if attack_name in {"ll", "soft-labels"}:
         attack_mode: Optional[str] = attack_name
         attack_name = "pgd"
@@ -131,7 +132,8 @@ def make_train_attack(attack_name: str, schedule: str, final_eps: float, period:
                          init_fn=init_fn,
                          project_fn=project_fn,
                          criterion=criterion,
-                         num_classes=num_classes)
+                         num_classes=num_classes,
+                         logits_y=logits_y)
 
     return attack
 
