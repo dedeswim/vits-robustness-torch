@@ -56,7 +56,7 @@ def main(args):
         args.attack_eps = args.eps / 255
         args.attack_steps = None
         args.attack = "autoattack"
-        results_dict = {'top1': clean_acc, 'robust_top1': robust_acc}
+        results_dict = {'top1': clean_acc * 100, 'robust_top1': robust_acc * 100}
         log_results_to_wandb(args, results_dict)
 
 
