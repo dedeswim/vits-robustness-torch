@@ -8,7 +8,7 @@ attack_boundaries:
 attack_eps: 0.031372549
 attack_lr: 0.009411765
 attack_norm: linf
-attack_steps: 5
+attack_steps: 10
 aug_splits: 0
 batch_size: 64 
 bce_loss: false
@@ -39,15 +39,21 @@ epochs: 30
 eps_schedule: constant 
 eps_schedule_period: 10
 eval_metric: robust_top1
-experiment: xcit-adv-finetuning
+experiment: xcit-adv-finetuning-small
+finetune: gs://robust-vits/xcit-adv-pretraining-3/best.pth.tar
+finetuning_patch_size: 4
 force_cpu: false
 gp: null
 hflip: 0.5
 img_size: null
 initial_checkpoint: ''
-input_size: null
+input_size:
+  - 3
+  - 32
+  - 32
 interpolation: ''
 jsd_loss: false
+keep_patch_embedding: true
 local_rank: 0
 log_interval: 50
 log_wandb: false

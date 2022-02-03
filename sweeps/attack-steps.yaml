@@ -1,0 +1,35 @@
+program: train.py
+method: grid
+metric:
+  name: eval_robust_top1
+  goal: maximize
+command:
+  - ${env}
+  - ${interpreter}
+  - launch_xla.py
+  - "--num-devices"
+  - "8"
+  - ${program}
+  - "gs://large-ds/tensorflow_datasets/"
+  - "--dataset"
+  - "tfds/image_net_subset"
+  - "--config"
+  - "configs/xcit-nano-adv-training.yaml"
+  - "--log-wandb"
+  - "--reprob"
+  - "0.25"
+  - "--cutmix"
+  - "1.0"
+  - "--mixup"
+  - "0.8"
+  - "--aa"
+  - "rand-m9-mstd0.5-inc1"
+  - "--weight-decay"
+  - "0.05"
+  - ${args}
+parameters:
+  attack-steps:
+    values:
+      - 1
+      - 5
+      - 10
