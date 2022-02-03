@@ -37,7 +37,7 @@ drop_path: 0.0
 epoch_repeats: 0.0
 epochs: 100
 eps_schedule: linear
-eps_schedule_period: 30
+eps_schedule_period: 20
 eval_metric: robust_top1
 experiment: xcit-nano-adv-training
 force_cpu: false
