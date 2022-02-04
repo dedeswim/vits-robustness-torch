@@ -4,18 +4,17 @@ from timm.models.registry import register_model
 
 
 default_cfgs = {
-    'xcit_small_12_p8_32': xcit._cfg(input_size=(3, 32, 32))
+    'xcit_small_12_p8_32': xcit._cfg(input_size=(3, 32, 32)),
+    'cait_xs24_224': cait._cfg(input_size=(3, 224, 224)),
 }
 
 
 @register_model
 def cait_xs24_224(pretrained=False, **kwargs):
-    model_kwargs = dict(patch_size=16, embed_dim=288, depth=24, num_heads=8, init_scale=1e-5, **kwargs)
-    default_cfg = cait._cfg("", input_size=(3, 224, 224))
+    model_kwargs = dict(patch_size=16, embed_dim=288, depth=24, num_heads=8, init_values=1e-5, **kwargs)
     return build_model_with_cfg(cait.Cait,
                                 'cait_s24_224',
                                 pretrained,
-                                default_cfg=default_cfg,
                                 pretrained_filter_fn=cait.checkpoint_filter_fn,
                                 **model_kwargs)
 

@@ -5,10 +5,10 @@ attack: pgd
 attack_boundaries:
 - 0
 - 1
-attack_eps: 0.031372549
-attack_lr: 0.009411765
+attack_eps: 0.03137254901960784
+attack_lr: 0.009411764705882352
 attack_norm: linf
-attack_steps: 10
+attack_steps: 5
 aug_splits: 0
 batch_size: 64 
 bce_loss: false
@@ -35,7 +35,7 @@ drop_block: null
 drop_connect: null
 drop_path: 0.05
 epoch_repeats: 0.0
-epochs: 30
+epochs: 20
 eps_schedule: constant 
 eps_schedule_period: 10
 eval_metric: robust_top1
