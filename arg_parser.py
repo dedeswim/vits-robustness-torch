@@ -210,7 +210,12 @@ parser.add_argument('--start-epoch',
                     type=int,
                     metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('--decay-epochs', type=float, default=100, metavar='N', help='epoch interval to decay LR')
+parser.add_argument('--decay-epochs',
+                    type=float,
+                    nargs='+',
+                    default=100,
+                    metavar='N',
+                    help='epoch interval to decay LR')
 parser.add_argument('--warmup-epochs',
                     type=int,
                     default=5,
@@ -517,6 +522,7 @@ parser.add_argument('--keep-patch-embedding',
                     action='store_true',
                     default=False,
                     help='Re-initializes the whole patch embedder')
+
 
 def parse_args():
     # Do we have a config file to parse?
