@@ -211,11 +211,9 @@ parser.add_argument('--num-examples',
                     type=int,
                     metavar='EXAMPLES',
                     help='Number of examples to use for the evaluation (default 5000)')
-parser.add_argument('--patch-size',
-                    default=16,
-                    type=int,
-                    metavar='N',
-                    help='The patch size to use')
+parser.add_argument('--patch-size', default=16, type=int, metavar='N', help='The patch size to use')
+parser.add_argument('--verbose', action='store_true', default=False, help='Runs autoattack in verbose mode')
+
 
 def validate(args):
     # might as well try to validate something
@@ -317,8 +315,14 @@ def validate(args):
     adv_accuracy = AccuracyTopK(dev_env=dev_env)
 
     attack_criterion = nn.NLLLoss(reduction="sum")
-    attack = attacks.make_attack(args.attack, args.attack_eps, args.attack_lr, args.attack_steps,
-                                 args.attack_norm, args.attack_boundaries, attack_criterion)
+    attack = attacks.make_attack(args.attack,
+                                 args.attack_eps,
+                                 args.attack_lr,
+                                 args.attack_steps,
+                                 args.attack_norm,
+                                 args.attack_boundaries,
+                                 attack_criterion,
+                                 verbose=args.verbose)
 
     model.eval()
     num_steps = len(loader)
@@ -343,7 +347,7 @@ def validate(args):
 
             if dev_env.type_xla:
                 dev_env.mark_step()
-            elif dev_env.type_cuda:
+            elif dev_env.type_cuda and dev_env.world_size is not None and dev_env.world_size > 1:
                 dev_env.synchronize()
             tracker.mark_iter_step_end()
 

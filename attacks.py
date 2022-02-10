@@ -145,7 +145,8 @@ def make_attack(attack: str,
                 norm: Norm,
                 boundaries: Tuple[float, float],
                 criterion: nn.Module,
-                device: Optional[torch.device] = None) -> AttackFn:
+                device: Optional[torch.device] = None,
+                **attack_kwargs) -> AttackFn:
     if attack != "autoattack":
         attack_fn = _ATTACKS[attack]
         init_fn, project_fn = _INIT_PROJECT_FN[norm]
@@ -160,7 +161,7 @@ def make_attack(attack: str,
 
     def autoattack_fn(model: nn.Module, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         assert isinstance(eps, float)
-        adversary = AutoAttack(model, norm.capitalize(), eps=eps, device=device, verbose=False)
+        adversary = AutoAttack(model, norm.capitalize(), eps=eps, device=device, **attack_kwargs)
         x_adv = adversary.run_standard_evaluation(x, y, bs=x.size(0))
         return x_adv  # type: ignore
 
