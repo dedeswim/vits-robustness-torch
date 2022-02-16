@@ -1,11 +1,13 @@
-from timm.models import cait, xcit
+from timm.models import cait, xcit, vision_transformer as vit
 from timm.models.helpers import build_model_with_cfg
 from timm.models.registry import register_model
 
+import xcit_vit_hybrid
 
 default_cfgs = {
     'xcit_small_12_p8_32': xcit._cfg(input_size=(3, 32, 32)),
     'cait_xs24_224': cait._cfg(input_size=(3, 224, 224)),
+    'xcit_hybrid_tiny_12_p16_224': xcit_vit_hybrid._cfg(input_size=(3, 224, 224))
 }
 
 
@@ -86,4 +88,14 @@ def xcit_small_12_p8_32(pretrained=False, **kwargs):
                                 'xcit_small_12_p8_32',
                                 pretrained,
                                 pretrained_filter_fn=xcit.checkpoint_filter_fn,
+                                **model_kwargs)
+
+
+@register_model
+def xcit_hybrid_tiny_12_p16_224(pretrained=False, **kwargs):
+    model_kwargs = dict(patch_size=16, embed_dim=192, depth=12, num_heads=3, **kwargs)
+    return build_model_with_cfg(xcit_vit_hybrid.XCiTViTHybrid,
+                                "xcit_hybrid_small_12_p16_224",
+                                pretrained,
+                                pretrained_filter_fn=vit.checkpoint_filter_fn,
                                 **model_kwargs)
