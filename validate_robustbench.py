@@ -39,6 +39,8 @@ def main(args):
         model.patch_embed.proj[0][0].stride = (1, 1)
         if args.patch_size == 4:
             model.patch_embed.proj[2][0].stride = (1, 1)
+        if args.patch_size == 2:
+            model.patch_embed.proj[4][0].stride = (1, 1)
 
     device = torch.device("cuda:0")
     model.eval()
