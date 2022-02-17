@@ -252,6 +252,8 @@ def validate(args):
         model.patch_embed.proj[0][0].stride = (1, 1)
         if args.patch_size == 4:
             model.patch_embed.proj[2][0].stride = (1, 1)
+        if args.patch_size == 2:
+            model.patch_embed.proj[4][0].stride = (1, 1)
 
     param_count = sum([m.numel() for m in model.parameters()])
     _logger.info('Model %s created, param count: %d' % (args.model, param_count))
