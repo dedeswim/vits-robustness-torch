@@ -32,7 +32,7 @@ def main(args):
         in_chans=3,
     )
     if isinstance(model, xcit.XCiT) and model.patch_embed.patch_size != args.patch_size:
-        assert args.patch_size in {4, 8}, "Finetuning patch size can be only 4, 8 or `None`"
+        assert args.patch_size in {2, 4, 8}, "Finetuning patch size can be only 4, 8 or `None`"
         assert isinstance(model, models.xcit.XCiT), "Finetuning patch size is only supported for XCiT"
         print(f"Adapting patch embedding for finetuning patch size {args.patch_size}")
         model.patch_embed.patch_size = args.patch_size
