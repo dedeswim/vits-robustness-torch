@@ -313,7 +313,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         model.load_state_dict(checkpoint_model, strict=False)
 
     if args.finetuning_patch_size is not None:
-        assert args.finetuning_patch_size in {4, 8}, "Finetuning patch size can be only 4, 8 or `None`"
+        assert args.finetuning_patch_size in {2, 4, 8}, "Finetuning patch size can be only 4, 8 or `None`"
         assert isinstance(model, models.xcit.XCiT), "Finetuning patch size is only supported for XCiT"
         _logger.info(f"Adapting patch embedding for finetuning patch size {args.finetuning_patch_size}")
         model.patch_embed.patch_size = args.finetuning_patch_size
@@ -322,6 +322,9 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
             model.patch_embed.proj[0][0].stride = (1, 1)
             if args.finetuning_patch_size == 4:
                 model.patch_embed.proj[2][0].stride = (1, 1)
+            if args.finetuning_patch_size == 2:
+                model.patch_embed.proj[4][0].stride = (1, 1)
+
         else:
             if args.finetuning_patch_size == 4:
                 model.patch_embed.proj = model.patch_embed.proj[-3:]

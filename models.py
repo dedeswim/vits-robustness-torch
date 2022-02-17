@@ -95,7 +95,7 @@ def xcit_small_12_p8_32(pretrained=False, **kwargs):
 def xcit_hybrid_tiny_12_p16_224(pretrained=False, **kwargs):
     model_kwargs = dict(patch_size=16, embed_dim=192, depth=12, num_heads=3, **kwargs)
     return build_model_with_cfg(xcit_vit_hybrid.XCiTViTHybrid,
-                                "xcit_hybrid_small_12_p16_224",
+                                "xcit_hybrid_tiny_12_p16_224",
                                 pretrained,
                                 pretrained_filter_fn=vit.checkpoint_filter_fn,
-                                **model_kwargs)
+                                **model_kwargs) # 5779660 params vs 5717416

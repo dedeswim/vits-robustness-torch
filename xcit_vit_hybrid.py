@@ -4,7 +4,7 @@ from functools import partial
 
 import torch
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
-from timm.models import xcit, vision_transformer as vit, build_model_with_cfg
+from timm.models import xcit, vision_transformer as vit
 from timm.models.helpers import named_apply
 from timm.models.layers import PatchEmbed, Mlp, DropPath, trunc_normal_
 from torch import nn
@@ -31,6 +31,7 @@ class XCiTViTHybrid(nn.Module):
     """Vision Transformer with XCA instead of SA.
     
     From timm.models.vision_transformer"""
+
     def __init__(self,
                  img_size=224,
                  patch_size=16,
@@ -58,10 +59,11 @@ class XCiTViTHybrid(nn.Module):
         norm_layer = norm_layer or partial(nn.LayerNorm, eps=1e-6)
         act_layer = act_layer or nn.GELU
 
-        self.patch_embed = embed_layer(img_size=img_size,
-                                       patch_size=patch_size,
-                                       in_chans=in_chans,
-                                       embed_dim=embed_dim)
+        self.patch_embed = xcit.ConvPatchEmbed(img_size=img_size,
+                                               patch_size=patch_size,
+                                               in_chans=in_chans,
+                                               embed_dim=embed_dim,
+                                               act_layer=act_layer)
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
@@ -119,10 +121,13 @@ class XCiTViTHybrid(nn.Module):
         return {'pos_embed', 'cls_token', 'dist_token'}
 
     def forward_features(self, x):
-        x = self.patch_embed(x)
+        x, (Hp, Wp) = self.patch_embed(x)
+        print("before concatenating", x.shape)
         x = torch.cat((self.cls_token.expand(x.shape[0], -1, -1), x), dim=1)
+        print("after concatenating", x.shape)
         x = self.pos_drop(x + self.pos_embed)
-        x = self.blocks(x)
+        for block in self.blocks:
+            x = block(x, Hp + 1, Wp) # +1 because of class token
         x = self.norm(x)
         return x
 
