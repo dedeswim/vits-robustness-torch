@@ -5,7 +5,7 @@ import torch
 import models
 import utils
 from robustbench import benchmark
-from robustbench.model_zoo.enums import BenchmarkDataset, ThreatModel
+from timm.models import xcit
 
 from validate import log_results_to_wandb
 
@@ -31,7 +31,7 @@ def main(args):
         num_classes=args.num_classes,
         in_chans=3,
     )
-    if model.patch_embed.patch_size != args.patch_size:
+    if isinstance(model, xcit.XCiT) and model.patch_embed.patch_size != args.patch_size:
         assert args.patch_size in {4, 8}, "Finetuning patch size can be only 4, 8 or `None`"
         assert isinstance(model, models.xcit.XCiT), "Finetuning patch size is only supported for XCiT"
         print(f"Adapting patch embedding for finetuning patch size {args.patch_size}")

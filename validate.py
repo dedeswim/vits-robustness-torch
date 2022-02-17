@@ -23,7 +23,7 @@ import torch.nn.parallel
 import yaml
 from timm.bits import (AccuracyTopK, AvgTensor, Monitor, Tracker, initialize_device)
 from timm.data import (RealLabelsImagenet, create_dataset, create_loader_v2, resolve_data_config)
-from timm.models import (apply_test_time_pool, create_model, is_model, list_models, load_checkpoint)
+from timm.models import (apply_test_time_pool, create_model, is_model, list_models, load_checkpoint, xcit)
 from timm.utils import natural_key, setup_default_logging
 from torchvision import transforms
 
@@ -182,7 +182,7 @@ parser.add_argument('--attack-eps',
                     metavar='EPS',
                     help='The epsilon to use for the attack (default 4/255)')
 parser.add_argument('--attack-lr',
-                    default=1 / 255,
+                    default=1.5 * 4 / 255 / 10,
                     type=float,
                     metavar='ATTACK_LR',
                     help='Learning rate for the attack (default 1e-4)')
@@ -244,7 +244,7 @@ def validate(args):
     else:
         load_checkpoint(model, args.checkpoint, args.use_ema)
 
-    if model.patch_embed.patch_size != args.patch_size:
+    if isinstance(model, xcit.XCiT) and model.patch_embed.patch_size != args.patch_size:
         assert args.patch_size in {4, 8}, "Finetuning patch size can be only 4, 8 or `None`"
         assert isinstance(model, models.xcit.XCiT), "Finetuning patch size is only supported for XCiT"
         _logger.info(f"Adapting patch embedding for finetuning patch size {args.patch_size}")
