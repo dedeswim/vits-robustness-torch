@@ -27,6 +27,7 @@ import tensorflow as tf
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch_xla.distributed.parallel_loader as pl
 from timm.bits import (AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv, Monitor, Tracker, TrainCfg,
                        TrainServices, TrainState, distribute_bn, initialize_device, setup_model_and_optimizer)
 from timm.data import (AugCfg, AugMixDataset, MixupCfg, create_loader_v2, resolve_data_config)
@@ -165,11 +166,19 @@ def main():
 
     try:
         for epoch in range(train_state.epoch, train_cfg.num_epochs):
-            if dev_env.distributed and hasattr(loader_train.sampler, 'set_epoch'):
-                loader_train.sampler.set_epoch(epoch)
-            if args.mixup_off_epoch and epoch >= args.mixup_off_epoch:
-                if loader_train.mixup_enabled:
-                    loader_train.mixup_enabled = False
+            if isinstance(loader_train, pl.MpDeviceLoader):
+                if dev_env.distributed and hasattr(loader_train._loader.sampler, 'set_epoch'):
+                    loader_train._loader.sampler.set_epoch(epoch)
+                if args.mixup_off_epoch and epoch >= args.mixup_off_epoch:
+                    if loader_train._loader.mixup_enabled:
+                        loader_train._loader.mixup_enabled = False
+            else:
+                if dev_env.distributed and hasattr(loader_train.sampler, 'set_epoch'):
+                    loader_train.sampler.set_epoch(epoch)
+                if args.mixup_off_epoch and epoch >= args.mixup_off_epoch:
+                    if loader_train.mixup_enabled:
+                        loader_train.mixup_enabled = False
+            
             train_metrics = train_one_epoch(
                 state=train_state,
                 services=services,
@@ -181,13 +190,6 @@ def main():
                 if dev_env.primary:
                     _logger.info("Distributing BatchNorm running means and vars")
                 distribute_bn(train_state.model, args.dist_bn == 'reduce', dev_env)
-            """train_metrics = evaluate(train_state.model,
-                                     train_state.train_loss,
-                                     loader_train,
-                                     services.monitor,
-                                     dev_env,
-                                     attack=eval_attack,
-                                     phase_suffix='train')"""
 
             eval_metrics = evaluate(train_state.model,
                                     train_state.eval_loss,
@@ -586,6 +588,11 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
         loader_eval.dataset.transform.transforms[-1] = transforms.ToTensor()
         loader_eval.mean = None
         loader_eval.std = None
+        
+    # Not needed for now
+    if False:
+        loader_train = pl.MpDeviceLoader(loader_train, dev_env.device)
+        loader_eval = pl.MpDeviceLoader(loader_eval, dev_env.device)
 
     return data_config, loader_eval, loader_train
 

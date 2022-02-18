@@ -7,7 +7,8 @@ import xcit_vit_hybrid
 default_cfgs = {
     'xcit_small_12_p8_32': xcit._cfg(input_size=(3, 32, 32)),
     'cait_xs24_224': cait._cfg(input_size=(3, 224, 224)),
-    'xcit_hybrid_tiny_12_p16_224': xcit_vit_hybrid._cfg(input_size=(3, 224, 224))
+    'xcit_hybrid_tiny_12_p16_224': xcit_vit_hybrid._cfg(input_size=(3, 224, 224)),
+    'cait_s12_224': cait._cfg(input_size=(3, 224, 224))
 }
 
 
@@ -16,6 +17,16 @@ def cait_xs24_224(pretrained=False, **kwargs):
     model_kwargs = dict(patch_size=16, embed_dim=288, depth=24, num_heads=8, init_values=1e-5, **kwargs)
     return build_model_with_cfg(cait.Cait,
                                 'cait_s24_224',
+                                pretrained,
+                                pretrained_filter_fn=cait.checkpoint_filter_fn,
+                                **model_kwargs)
+    
+
+@register_model
+def cait_s12_224(pretrained=False, **kwargs):
+    model_kwargs = dict(patch_size=16, embed_dim=384, depth=12, num_heads=8, init_values=1e-5, **kwargs)
+    return build_model_with_cfg(cait.Cait,
+                                'cait_s12_224',
                                 pretrained,
                                 pretrained_filter_fn=cait.checkpoint_filter_fn,
                                 **model_kwargs)
@@ -98,4 +109,4 @@ def xcit_hybrid_tiny_12_p16_224(pretrained=False, **kwargs):
                                 "xcit_hybrid_tiny_12_p16_224",
                                 pretrained,
                                 pretrained_filter_fn=vit.checkpoint_filter_fn,
-                                **model_kwargs) # 5779660 params vs 5717416
+                                **model_kwargs)
