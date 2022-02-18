@@ -6,6 +6,7 @@ import models
 import utils
 from robustbench import benchmark
 from timm.models import xcit
+from torchvision import transforms
 
 from validate import log_results_to_wandb
 
@@ -46,13 +47,23 @@ def main(args):
     model.eval()
     model.to(device)
 
+    if args.dataset == "imagenet":
+        interpolation = model.default_cfg['interpolation']
+        preprocessing = transforms.Compose([
+            transforms.Resize(224, interpolation=transforms.InterpolationMode(interpolation)),
+            transforms.CenterCrop(224),
+            transforms.ToTensor()
+        ])
+    else:
+        preprocessing = transforms.ToTensor()
+
     clean_acc, robust_acc = benchmark(model,
                                       dataset=args.dataset,
                                       data_dir=args.data_dir,
                                       device=device,
                                       batch_size=args.batch_size,
                                       eps=args.eps / 255,
-                                      preprocessing='Res256Crop224')
+                                      preprocessing=preprocessing)
 
     if args.log_wandb:
         args.attack_eps = args.eps / 255
