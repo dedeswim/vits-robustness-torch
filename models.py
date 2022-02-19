@@ -20,11 +20,11 @@ def cait_xs24_224(pretrained=False, **kwargs):
                                 pretrained,
                                 pretrained_filter_fn=cait.checkpoint_filter_fn,
                                 **model_kwargs)
-    
+
 
 @register_model
 def cait_s12_224(pretrained=False, **kwargs):
-    model_kwargs = dict(patch_size=16, embed_dim=384, depth=12, num_heads=8, init_values=1e-5, **kwargs)
+    model_kwargs = dict(patch_size=16, embed_dim=384, depth=12, num_heads=8, init_values=1.0, **kwargs)
     return build_model_with_cfg(cait.Cait,
                                 'cait_s12_224',
                                 pretrained,
