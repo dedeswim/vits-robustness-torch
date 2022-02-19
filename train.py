@@ -27,6 +27,7 @@ import tensorflow as tf
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.utils.data as data
 import torch_xla.distributed.parallel_loader as pl
 from timm.bits import (AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv, Monitor, Tracker, TrainCfg,
                        TrainServices, TrainState, distribute_bn, initialize_device, setup_model_and_optimizer)
@@ -41,6 +42,7 @@ from timm.utils import random_seed, setup_default_logging, unwrap_model
 from torchvision import transforms
 
 import attacks
+from iterable_augmix_dataset import IterableAugMixDataset
 import models  # Import needed to register the extra models that are not in timm
 import utils
 from arg_parser import parse_args
@@ -178,7 +180,7 @@ def main():
                 if args.mixup_off_epoch and epoch >= args.mixup_off_epoch:
                     if loader_train.mixup_enabled:
                         loader_train.mixup_enabled = False
-            
+
             train_metrics = train_one_epoch(
                 state=train_state,
                 services=services,
@@ -497,7 +499,10 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
 
     # wrap dataset in AugMix helper
     if args.aug_splits > 1:
-        dataset_train = AugMixDataset(dataset_train, num_splits=args.aug_splits)
+        if not isinstance(dataset_train, data.IterableDataset):
+            dataset_train = AugMixDataset(dataset_train, num_splits=args.aug_splits)
+        else:
+            dataset_train = IterableAugMixDataset(dataset_train, num_splits=args.aug_splits)
 
     # create data loaders w/ augmentation pipeline
     train_interpolation = args.train_interpolation
@@ -542,24 +547,39 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
                                     mix_cfg=mixup_cfg,
                                     num_workers=args.workers,
                                     pin_memory=args.pin_mem,
-                                    use_multi_epochs_loader=args.use_multi_epochs_loader)
+                                    use_multi_epochs_loader=args.use_multi_epochs_loader,
+                                    separate_transform=args.aug_splits > 0)
 
     if not train_pp_cfg.normalize:
         if normalize_in_transform:
             idx = -2 if args.reprob > 0 else -1
-            loader_train.dataset.transform.transforms[idx] = transforms.ToTensor()
+            if args.aug_splits > 0:
+                assert isinstance(loader_train.dataset, AugMixDataset)
+                assert loader_train.dataset.normalize is not None
+                loader_train.dataset.normalize.transforms[idx] = transforms.ToTensor()
+            else:
+                loader_train.dataset.transform.transforms[idx] = transforms.ToTensor()
         else:
-            loader_train.dataset.transform.transforms[-1] = transforms.ToTensor()
+            if args.aug_splits > 0:
+                assert isinstance(loader_train.dataset, AugMixDataset)
+                assert loader_train.dataset.normalize is not None
+                loader_train.dataset.normalize.transforms[-1] = transforms.ToTensor()
+            else:
+                loader_train.dataset.transform.transforms[-1] = transforms.ToTensor()
+
             loader_train.mean = None
             loader_train.std = None
 
     if args.reprob > 0 and train_aug_cfg is not None:
-        loader_train.dataset.transform.transforms[-1] = NotNormalizedRandomErasing(
-            probability=train_aug_cfg.re_prob,
-            mode=train_aug_cfg.re_mode,
-            count=train_aug_cfg.re_count,
-            mean=data_config['mean'],
-            std=data_config['std'])
+        random_erasing = NotNormalizedRandomErasing(probability=train_aug_cfg.re_prob,
+                                                    mode=train_aug_cfg.re_mode,
+                                                    count=train_aug_cfg.re_count,
+                                                    mean=data_config['mean'],
+                                                    std=data_config['std'])
+        if isinstance(loader_train.dataset, AugMixDataset):
+            loader_train.dataset.normalize.transforms[-1] = random_erasing
+        else:
+            loader_train.dataset.transform.transforms[-1] = random_erasing
 
     eval_pp_cfg = utils.MyPreprocessCfg(  # type: ignore
         input_size=data_config['input_size'],
@@ -588,9 +608,10 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
         loader_eval.dataset.transform.transforms[-1] = transforms.ToTensor()
         loader_eval.mean = None
         loader_eval.std = None
-        
+
     # Not needed for now
     if False:
+        # TODO: set the mp loader inside of Fetcher instead
         loader_train = pl.MpDeviceLoader(loader_train, dev_env.device)
         loader_eval = pl.MpDeviceLoader(loader_eval, dev_env.device)
 
