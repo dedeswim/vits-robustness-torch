@@ -1,6 +1,6 @@
 aa: rand-m9-mstd0.5-inc1
 amp: false
-aug_splits: 0
+aug_splits: 3
 batch_size: 64
 bce_loss: false
 bce_target_thresh: null
