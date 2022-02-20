@@ -8,6 +8,7 @@ from typing import Callable, Optional, Tuple
 import tensorflow as tf
 import timm
 import torch
+import torch_xla.distributed.parallel_loader as pl
 from timm import bits
 from timm.data import PreprocessCfg
 from torch import nn
@@ -69,6 +70,7 @@ class GCSSummaryCsv(bits.monitor.SummaryCsv):
 
 
 class ComputeLossFn(nn.Module):
+
     def __init__(self, loss_fn: nn.Module):
         super().__init__()
         self.loss_fn = loss_fn
@@ -91,17 +93,18 @@ class AdvTrainState(bits.TrainState):
 
     @classmethod
     def from_bits(cls, instance: bits.TrainState, **kwargs):
-        return cls(model=instance.model,  # type: ignore
-                   train_loss=instance.train_loss,
-                   eval_loss=instance.eval_loss,
-                   updater=instance.updater,
-                   lr_scheduler=instance.lr_scheduler,
-                   model_ema=instance.model_ema,
-                   train_cfg=instance.train_cfg,
-                   epoch=instance.epoch,
-                   step_count=instance.step_count,
-                   step_count_global=instance.step_count_global,
-                   **kwargs)
+        return cls(
+            model=instance.model,  # type: ignore
+            train_loss=instance.train_loss,
+            eval_loss=instance.eval_loss,
+            updater=instance.updater,
+            lr_scheduler=instance.lr_scheduler,
+            model_ema=instance.model_ema,
+            train_cfg=instance.train_cfg,
+            epoch=instance.epoch,
+            step_count=instance.step_count,
+            step_count_global=instance.step_count_global,
+            **kwargs)
 
 
 @dataclasses.dataclass

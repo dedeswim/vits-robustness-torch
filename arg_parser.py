@@ -522,6 +522,10 @@ parser.add_argument('--keep-patch-embedding',
                     action='store_true',
                     default=False,
                     help='Re-initializes the whole patch embedder')
+parser.add_argument('--use-mp-loader',
+                    action='store_true',
+                    default=False,
+                    help='Uses torch_xla\'s MP loader')
 
 
 def parse_args():

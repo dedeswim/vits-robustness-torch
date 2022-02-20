@@ -31,7 +31,7 @@ import torch.utils.data as data
 import torch_xla.distributed.parallel_loader as pl
 from timm.bits import (AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv, Monitor, Tracker, TrainCfg,
                        TrainServices, TrainState, distribute_bn, initialize_device, setup_model_and_optimizer)
-from timm.data import (AugCfg, AugMixDataset, MixupCfg, create_loader_v2, resolve_data_config)
+from timm.data import (AugCfg, AugMixDataset, fetcher, MixupCfg, create_loader_v2, resolve_data_config)
 from timm.data.dataset_factory import create_dataset
 from timm.loss import (BinaryCrossEntropy, JsdCrossEntropy, LabelSmoothingCrossEntropy,
                        SoftTargetCrossEntropy)
@@ -168,18 +168,11 @@ def main():
 
     try:
         for epoch in range(train_state.epoch, train_cfg.num_epochs):
-            if isinstance(loader_train, pl.MpDeviceLoader):
-                if dev_env.distributed and hasattr(loader_train._loader.sampler, 'set_epoch'):
-                    loader_train._loader.sampler.set_epoch(epoch)
-                if args.mixup_off_epoch and epoch >= args.mixup_off_epoch:
-                    if loader_train._loader.mixup_enabled:
-                        loader_train._loader.mixup_enabled = False
-            else:
-                if dev_env.distributed and hasattr(loader_train.sampler, 'set_epoch'):
-                    loader_train.sampler.set_epoch(epoch)
-                if args.mixup_off_epoch and epoch >= args.mixup_off_epoch:
-                    if loader_train.mixup_enabled:
-                        loader_train.mixup_enabled = False
+            if dev_env.distributed and hasattr(loader_train.sampler, 'set_epoch'):
+                loader_train.sampler.set_epoch(epoch)
+            if args.mixup_off_epoch and epoch >= args.mixup_off_epoch:
+                if loader_train.mixup_enabled:
+                    loader_train.mixup_enabled = False
 
             train_metrics = train_one_epoch(
                 state=train_state,
@@ -610,10 +603,13 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
         loader_eval.std = None
 
     # Not needed for now
-    if False:
-        # TODO: set the mp loader inside of Fetcher instead
-        loader_train = pl.MpDeviceLoader(loader_train, dev_env.device)
-        loader_eval = pl.MpDeviceLoader(loader_eval, dev_env.device)
+    if args.use_mp_loader and dev_env.type_xla:
+        assert isinstance(loader_train, fetcher.Fetcher)
+        assert isinstance(loader_eval, fetcher.Fetcher)
+        loader_train.use_mp_loader = True
+        loader_train._loader = pl.MpDeviceLoader(loader_train._loader, dev_env.device)
+        loader_eval.use_mp_loader = True
+        loader_eval._loader = pl.MpDeviceLoader(loader_eval._loader, dev_env.device)
 
     return data_config, loader_eval, loader_train
 
