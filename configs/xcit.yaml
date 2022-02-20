@@ -55,7 +55,7 @@ mixup_mode: batch
 mixup_off_epoch: 0
 mixup_prob: 1.0
 mixup_switch_prob: 0.5
-model: xcit_small_24_p16_224
+model: xcit_small_12_p16_224
 model_ema: false
 model_ema_decay: 0.99996
 momentum: 0.9
@@ -66,7 +66,7 @@ num_classes: null
 opt: adamw
 opt_betas: null
 opt_eps: 1.0e-8
-output: ''
+output: gs://robust-vits/
 patience_epochs: 10
 pin_mem: false
 pretrained: false
