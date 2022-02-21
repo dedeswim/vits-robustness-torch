@@ -8,7 +8,6 @@ from typing import Callable, Optional, Tuple
 import tensorflow as tf
 import timm
 import torch
-import torch_xla.distributed.parallel_loader as pl
 from timm import bits
 from timm.data import PreprocessCfg
 from torch import nn

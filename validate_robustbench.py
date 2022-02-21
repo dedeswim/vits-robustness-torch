@@ -1,12 +1,14 @@
 import argparse
+import math
 
 import torch
-
-import models
-import utils
 from robustbench import benchmark
 from timm.models import xcit
 from torchvision import transforms
+from torch import nn
+
+import models
+import utils
 
 from validate import log_results_to_wandb
 
@@ -23,6 +25,7 @@ parser.add_argument('--log-wandb',
                     action='store_true',
                     default=False,
                     help='Log results to wandb using the run stored in the bucket')
+parser.add_argument('--upsample-in-model', action='store_true', default=False, help='')
 
 
 def main(args):
@@ -44,18 +47,28 @@ def main(args):
             model.patch_embed.proj[4][0].stride = (1, 1)
 
     device = torch.device("cuda:0")
-    model.eval()
-    model.to(device)
 
+    # Get default pre-processing settings from the model
+    interpolation = model.default_cfg['interpolation']
+    crop_pct = model.default_cfg['crop_pct']
+    img_size = model.default_cfg['input_size'][1]
+    scale_size = int(math.floor(img_size / crop_pct))
     if args.dataset == "imagenet":
-        interpolation = model.default_cfg['interpolation']
         preprocessing = transforms.Compose([
-            transforms.Resize(224, interpolation=transforms.InterpolationMode(interpolation)),
-            transforms.CenterCrop(224),
+            transforms.Resize(scale_size, interpolation=transforms.InterpolationMode(interpolation)),
+            transforms.CenterCrop(img_size),
             transforms.ToTensor()
         ])
     else:
         preprocessing = transforms.ToTensor()
+
+    if args.upsample_in_model:
+        model = nn.Sequential(
+            transforms.Resize(scale_size, interpolation=transforms.InterpolationMode(interpolation)),
+            transforms.CenterCrop(img_size), model)
+
+    model.eval()
+    model.to(device)
 
     clean_acc, robust_acc = benchmark(model,
                                       dataset=args.dataset,
