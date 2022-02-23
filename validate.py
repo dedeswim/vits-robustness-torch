@@ -497,7 +497,10 @@ def log_results_to_wandb(args: argparse.Namespace, results: Dict):
     attack = args.attack
     eps = args.attack_eps
     steps = args.attack_steps
+    norm = args.attack_norm
     prefix = f"{attack}-{steps}-{eps}"
+    if norm != "linf":
+        prefix += f"-{norm}"
     dict_to_log = {
         "eval_top1-final": results['top1'],
         f"{prefix}-eval_robust_top1_final": results['robust_top1'],

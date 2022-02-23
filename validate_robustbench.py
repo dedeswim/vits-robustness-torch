@@ -21,6 +21,7 @@ parser.add_argument('--model', default=None, type=str, metavar='NAME')
 parser.add_argument('--batch-size', default=512, type=int, metavar='N')
 parser.add_argument('--num-classes', default=10, type=int, metavar='N')
 parser.add_argument('--eps', default=8, type=int)
+parser.add_argument('--threat-model', default="Linf", type=str, metavar='MODEL')
 parser.add_argument('--log-wandb',
                     action='store_true',
                     default=False,
@@ -76,12 +77,14 @@ def main(args):
                                       device=device,
                                       batch_size=args.batch_size,
                                       eps=args.eps / 255,
-                                      preprocessing=preprocessing)
+                                      preprocessing=preprocessing,
+                                      threat_model=args.threat_model)
 
     if args.log_wandb:
         args.attack_eps = args.eps / 255
         args.attack_steps = None
         args.attack = "autoattack"
+        args.threat_model = args.threat_model.lower() # .lower() to comply with training convention
         results_dict = {'top1': clean_acc * 100, 'robust_top1': robust_acc * 100}
         log_results_to_wandb(args, results_dict)
 
