@@ -99,7 +99,7 @@ parser.add_argument('--interpolation',
 parser.add_argument('-nn',
                     '--no-normalize',
                     action='store_true',
-                    default=True,
+                    default=False,
                     help='Avoids normalizing inputs (but it scales them in [0, 1]')
 parser.add_argument('--num-classes', type=int, default=None, help='Number classes in dataset')
 parser.add_argument('--class-map',
@@ -113,7 +113,7 @@ parser.add_argument('--gp',
                     metavar='POOL',
                     help='Global pool type, one of (fast, avg, max, avgmax, avgmaxc). Model default if None.')
 parser.add_argument('--log-freq',
-                    default=20,
+                    default=1,
                     type=int,
                     metavar='N',
                     help='batch logging frequency (default: 10)')
@@ -172,7 +172,7 @@ parser.add_argument('--force-cpu',
                     help='Force CPU to be used even if HW accelerator exists.')
 
 parser.add_argument('--attack',
-                    default='pgd',
+                    default='',
                     type=str,
                     metavar='ATTACK',
                     help='What attack to use (default: "pgd")')
@@ -211,7 +211,7 @@ parser.add_argument('--num-examples',
                     type=int,
                     metavar='EXAMPLES',
                     help='Number of examples to use for the evaluation (default 5000)')
-parser.add_argument('--patch-size', default=16, type=int, metavar='N', help='The patch size to use')
+parser.add_argument('--patch-size', default=None, type=int, metavar='N', help='The patch size to use')
 parser.add_argument('--verbose', action='store_true', default=False, help='Runs autoattack in verbose mode')
 
 
@@ -241,10 +241,11 @@ def validate(args):
                                           in_chans=3,
                                           global_pool=args.gp,
                                           scriptable=args.torchscript)
-    else:
+    elif args.checkpoint:
         load_checkpoint(model, args.checkpoint, args.use_ema)
 
-    if isinstance(model, xcit.XCiT) and model.patch_embed.patch_size != args.patch_size:
+    if args.patch_size is not None and isinstance(
+            model, xcit.XCiT) and model.patch_embed.patch_size != args.patch_size:
         assert args.patch_size in {2, 4, 8}, "Finetuning patch size can be only 4, 8 or `None`"
         assert isinstance(model, models.xcit.XCiT), "Finetuning patch size is only supported for XCiT"
         _logger.info(f"Adapting patch embedding for finetuning patch size {args.patch_size}")
@@ -294,7 +295,7 @@ def validate(args):
     eval_pp_cfg = utils.MyPreprocessCfg(  # type: ignore
         input_size=data_config['input_size'],
         interpolation=data_config['interpolation'],
-        crop_pct=data_config['crop_pct'],
+        crop_pct=1.0 if test_time_pool else data_config['crop_pct'],
         mean=data_config['mean'],
         std=data_config['std'],
         normalize=data_config['normalize'],
@@ -316,15 +317,18 @@ def validate(args):
     accuracy = AccuracyTopK(dev_env=dev_env)
     adv_accuracy = AccuracyTopK(dev_env=dev_env)
 
-    attack_criterion = nn.NLLLoss(reduction="sum")
-    attack = attacks.make_attack(args.attack,
-                                 args.attack_eps,
-                                 args.attack_lr,
-                                 args.attack_steps,
-                                 args.attack_norm,
-                                 args.attack_boundaries,
-                                 attack_criterion,
-                                 verbose=args.verbose)
+    if args.attack:
+        attack_criterion = nn.NLLLoss(reduction="sum")
+        attack = attacks.make_attack(args.attack,
+                                     args.attack_eps,
+                                     args.attack_lr,
+                                     args.attack_steps,
+                                     args.attack_norm,
+                                     args.attack_boundaries,
+                                     attack_criterion,
+                                     verbose=args.verbose)
+    else:
+        attack = None
 
     model.eval()
     num_steps = len(loader)
@@ -335,21 +339,23 @@ def validate(args):
             tracker.mark_iter_data_end()
 
             with dev_env.autocast():
-                if dev_env.type_xla:
-                    model.train()
-                with torch.enable_grad():
-                    adv_sample = attack(model, sample, target)
-                model.eval()
+                if attack is not None:
+                    if dev_env.type_xla:
+                        model.train()
+                    with torch.enable_grad():
+                        adv_sample = attack(model, sample, target)
+                    model.eval()
+                    adv_output = model(adv_sample)
+                else:
+                    adv_output = None
                 output = model(sample)
-                adv_output = model(adv_sample)
-
             if valid_labels is not None:
                 output = output[:, valid_labels]
             loss = criterion(output, target)
 
             if dev_env.type_xla:
                 dev_env.mark_step()
-            elif dev_env.type_cuda and dev_env.world_size is not None and dev_env.world_size > 1:
+            elif dev_env.type_cuda:
                 dev_env.synchronize()
             tracker.mark_iter_step_end()
 
@@ -357,8 +363,8 @@ def validate(args):
                 real_labels.add_result(output)
             losses.update(loss.detach(), sample.size(0))
             accuracy.update(output.detach(), target)
-
-            adv_accuracy.update(adv_output.detach(), target)
+            if adv_output is not None:
+                adv_accuracy.update(adv_output.detach(), target)
 
             tracker.mark_iter()
             if last_step or step_idx % args.log_freq == 0:
