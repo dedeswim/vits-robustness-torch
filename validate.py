@@ -27,9 +27,9 @@ from timm.models import (apply_test_time_pool, create_model, is_model, list_mode
 from timm.utils import natural_key, setup_default_logging
 from torchvision import transforms
 
-import attacks
-import models  # Import needed to register the extra models that are not in timm
-import utils
+import src.attacks as attacks
+import src.models as models  # Import needed to register the extra models that are not in timm
+import src.utils as utils
 
 _logger = logging.getLogger('validate')
 

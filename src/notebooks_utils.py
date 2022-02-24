@@ -8,7 +8,7 @@ from torch import nn
 from torch.utils import data
 from torchvision import transforms
 
-import attacks
+import src.attacks as attacks
 
 
 def get_data(n_examples, data_dir="~/imagenet/"):

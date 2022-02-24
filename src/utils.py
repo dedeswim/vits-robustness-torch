@@ -12,7 +12,7 @@ from timm import bits
 from timm.data import PreprocessCfg
 from torch import nn
 
-import attacks
+import src.attacks as attacks
 
 
 def get_outdir(path: str, *paths: str, inc=False) -> str:

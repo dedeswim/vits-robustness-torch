@@ -28,7 +28,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data as data
-import torch_xla.distributed.parallel_loader as pl
 from timm.bits import (AccuracyTopK, AvgTensor, CheckpointManager, DeviceEnv, Monitor, Tracker, TrainCfg,
                        TrainServices, TrainState, distribute_bn, initialize_device, setup_model_and_optimizer)
 from timm.data import (AugCfg, AugMixDataset, fetcher, MixupCfg, create_loader_v2, resolve_data_config)
@@ -41,13 +40,11 @@ from timm.scheduler import create_scheduler
 from timm.utils import random_seed, setup_default_logging, unwrap_model
 from torchvision import transforms
 
-import attacks
-from iterable_augmix_dataset import IterableAugMixDataset
-import models  # Import needed to register the extra models that are not in timm
-import utils
-from arg_parser import parse_args
-from attacks import _SCHEDULES, AttackFn
-from random_erasing import NotNormalizedRandomErasing
+from src.iterable_augmix_dataset import IterableAugMixDataset
+from src import attacks, models, utils  # Models import needed to register the extra models that are not in timm
+from src.arg_parser import parse_args
+from src.attacks import _SCHEDULES, AttackFn
+from src.random_erasing import NotNormalizedRandomErasing
 
 _logger = logging.getLogger('train')
 
@@ -604,6 +601,7 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
 
     # Not needed for now
     if args.use_mp_loader and dev_env.type_xla:
+        import torch_xla.distributed.parallel_loader as pl
         assert isinstance(loader_train, fetcher.Fetcher)
         assert isinstance(loader_eval, fetcher.Fetcher)
         loader_train.use_mp_loader = True

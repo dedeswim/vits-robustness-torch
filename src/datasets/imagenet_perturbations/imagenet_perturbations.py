@@ -53,6 +53,8 @@ class ImagenetPerturbations(tfds.core.GeneratorBasedBuilder):
     ]
 
     BATCH_SIZE = 128
+    ORIGINAL_DATASET_NAME = "tfds/robustbench_image_net"
+    ATTACK_STEPS = 100
 
     def _info(self) -> tfds.core.DatasetInfo:
         """Returns the dataset metadata."""
@@ -82,16 +84,15 @@ class ImagenetPerturbations(tfds.core.GeneratorBasedBuilder):
         model.to(dev_env.device)
 
         root = self._original_state["data_dir"]
-        original_dataset = create_dataset("tfds/robustbench_image_net", root=root)
+        original_dataset = create_dataset(self.ORIGINAL_DATASET_NAME, root=root, is_training=False)
 
         data_config = resolve_data_config({}, model=model)
-        pp_cfg = PreprocessCfg(  # type: ignore
+        pp_cfg = PreprocessCfg(  # type: ignore 
             input_size=data_config['input_size'],
             interpolation=data_config['interpolation'],
             crop_pct=data_config['crop_pct'],
             mean=data_config['mean'],
-            std=data_config['std']
-        )
+            std=data_config['std'])
         loader = create_loader_v2(original_dataset,
                                   batch_size=self.BATCH_SIZE,
                                   is_training=False,
@@ -105,12 +106,13 @@ class ImagenetPerturbations(tfds.core.GeneratorBasedBuilder):
 
     def _generate_examples(self, model, original_loader):
         """Yields examples."""
-        for x_batch, y_batch in original_loader:
+        for batch_idx, (x_batch, y_batch) in enumerate(original_loader):
             # TODO: create examples here
             pert_batch = x_batch
 
-            for x, y in zip(pert_batch, y_batch):
-                yield 'key', {
+            for sample_idx, (x, y) in enumerate(zip(pert_batch, y_batch)):
+                key = batch_idx * self.BATCH_SIZE + sample_idx
+                yield key, {
                     'image': np.asarray(F.to_pil_image(x.cpu())),
                     'label': y.cpu().item(),
                 }

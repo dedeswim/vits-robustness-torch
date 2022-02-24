@@ -2,7 +2,7 @@ from timm.models import cait, xcit, vision_transformer as vit
 from timm.models.helpers import build_model_with_cfg
 from timm.models.registry import register_model
 
-import xcit_vit_hybrid
+import src.xcit_vit_hybrid as xcit_vit_hybrid
 
 default_cfgs = {
     'xcit_small_12_p8_32': xcit._cfg(input_size=(3, 32, 32)),

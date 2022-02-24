@@ -7,8 +7,8 @@ from timm.models import xcit
 from torchvision import transforms
 from torch import nn
 
-import models
-import utils
+import src.models as models
+import src.utils as utils
 
 from validate import log_results_to_wandb
 
