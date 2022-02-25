@@ -183,7 +183,7 @@ parser.add_argument('--attack-eps',
                     metavar='EPS',
                     help='The epsilon to use for the attack (default 4/255)')
 parser.add_argument('--attack-lr',
-                    default=1.5 * 4 / 255 / 10,
+                    default=None,
                     type=float,
                     metavar='ATTACK_LR',
                     help='Learning rate for the attack (default 1e-4)')
@@ -326,10 +326,12 @@ def validate(args):
     adv_accuracy = AccuracyTopK(dev_env=dev_env)
 
     if args.attack:
+        eps = args.attack_eps / 255
+        lr = args.attack_lr or (1.5 * eps / args.attack_steps)
         attack_criterion = nn.NLLLoss(reduction="sum")
         attack = attacks.make_attack(args.attack,
-                                     args.attack_eps / 255,
-                                     args.attack_lr,
+                                     eps,
+                                     lr,
                                      args.attack_steps,
                                      args.attack_norm,
                                      args.attack_boundaries,

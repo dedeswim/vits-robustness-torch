@@ -11,10 +11,12 @@ from torchvision import transforms
 import src.attacks as attacks
 
 
-def get_data(n_examples, data_dir="~/imagenet/"):
+def get_data(n_examples, data_dir="~/imagenet/", crop_pct=1.0):
     torch.manual_seed(0)
+    res = 224
+    resize_res = int(res / crop_pct)
     preprocessing = transforms.Compose(
-        [transforms.Resize(256), transforms.CenterCrop(224),
+        [transforms.Resize(resize_res), transforms.CenterCrop(res),
          transforms.ToTensor()])
     imagenet = CustomImageFolder(data_dir + '/val', preprocessing)
     test_loader = data.DataLoader(imagenet, batch_size=n_examples, shuffle=True, num_workers=4)
@@ -22,8 +24,8 @@ def get_data(n_examples, data_dir="~/imagenet/"):
     return x, y
 
 
-def get_adv_examples(model, device, n_examples, eps=4 / 255, pgd_steps=100):
-    x, y = get_data(n_examples)
+def get_adv_examples(model, device, n_examples, eps=4 / 255, pgd_steps=100, crop_pct=1.0):
+    x, y = get_data(n_examples, crop_pct=crop_pct)
     attack_criterion = nn.NLLLoss(reduction="sum")
     attack = attacks.make_attack("pgd", eps, 1.5 * eps / pgd_steps, pgd_steps, "linf", (0, 1),
                                  attack_criterion)
