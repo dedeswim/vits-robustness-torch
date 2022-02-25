@@ -16,6 +16,8 @@ parser = argparse.ArgumentParser(description='Validation using RobustBench')
 parser.add_argument('--patch-size', default=16, type=int, metavar='N', help='The patch size to use')
 parser.add_argument('--dataset', default="cifar10", type=str, metavar='DATASET')
 parser.add_argument('--data-dir', default="~/torch_data/", type=str, metavar='DATASET')
+parser.add_argument('--crop-pct', default=None, type=float)
+parser.add_argument('--normalize', action='store_true', default=False, help='Normalizes inputs')
 parser.add_argument('--checkpoint', default=None, type=str, metavar='PATH')
 parser.add_argument('--model', default=None, type=str, metavar='NAME')
 parser.add_argument('--batch-size', default=512, type=int, metavar='N')
@@ -51,7 +53,7 @@ def main(args):
 
     # Get default pre-processing settings from the model
     interpolation = model.default_cfg['interpolation']
-    crop_pct = model.default_cfg['crop_pct']
+    crop_pct = args.crop_pct or model.default_cfg['crop_pct']
     img_size = model.default_cfg['input_size'][1]
     scale_size = int(math.floor(img_size / crop_pct))
     if args.dataset == "imagenet":
@@ -60,6 +62,9 @@ def main(args):
             transforms.CenterCrop(img_size),
             transforms.ToTensor()
         ])
+        if args.normalize:
+            preprocessing.transforms.append(
+                transforms.Normalize(model.default_cfg['mean'], model.default_cfg['std']))
     else:
         preprocessing = transforms.ToTensor()
 
@@ -84,7 +89,7 @@ def main(args):
         args.attack_eps = args.eps / 255
         args.attack_steps = None
         args.attack = "autoattack"
-        args.threat_model = args.threat_model.lower() # .lower() to comply with training convention
+        args.threat_model = args.threat_model.lower()  # .lower() to comply with training convention
         results_dict = {'top1': clean_acc * 100, 'robust_top1': robust_acc * 100}
         log_results_to_wandb(args, results_dict)
 

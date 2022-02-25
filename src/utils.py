@@ -46,6 +46,14 @@ def load_model_from_gcs(checkpoint_path: str, model_name: str, **kwargs):
     return model
 
 
+def load_state_dict_from_gcs(model: nn.Module, checkpoint_path: str):
+    with tempfile.TemporaryDirectory() as dst:
+        local_checkpoint_path = os.path.join(dst, os.path.basename(checkpoint_path))
+        tf.io.gfile.copy(checkpoint_path, local_checkpoint_path)
+        model.load_state_dict(torch.load(local_checkpoint_path)["model"])
+    return model
+
+
 def upload_checkpoints_gcs(checkpoints_dir: str, output_dir: str):
     checkpoints_paths = glob.glob(os.path.join(checkpoints_dir, '*.pth.tar'))
     for checkpoint in checkpoints_paths:
