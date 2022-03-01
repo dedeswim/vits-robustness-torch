@@ -157,7 +157,8 @@ def make_attack(attack: str,
                                  boundaries=boundaries,
                                  init_fn=init_fn,
                                  project_fn=project_fn,
-                                 criterion=criterion)
+                                 criterion=criterion,
+                                 **attack_kwargs)
 
     def autoattack_fn(model: nn.Module, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         assert isinstance(eps, float)

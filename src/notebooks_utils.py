@@ -14,7 +14,7 @@ from src import attacks
 def get_data(n_examples, data_dir="~/imagenet/"):
     torch.manual_seed(0)
     preprocessing = transforms.Compose(
-        [transforms.Resize(256), transforms.CenterCrop(224),
+        [transforms.Resize(224), transforms.CenterCrop(224),
          transforms.ToTensor()])
     imagenet = CustomImageFolder(data_dir + '/val', preprocessing)
     test_loader = data.DataLoader(imagenet, batch_size=n_examples, shuffle=True, num_workers=4)
@@ -29,6 +29,37 @@ def get_adv_examples(model, device, n_examples, eps=4 / 255, pgd_steps=100):
                                  attack_criterion)
     x, y = x.to(device), y.to(device)
     model = model.to(device)
+    adv_x = attack(model, x, y)
+    return x, adv_x, y
+
+
+def get_synth_examples(model,
+                       device,
+                       n_examples,
+                       eps=15,
+                       pgd_steps=100,
+                       input_size=(3, 224, 224),
+                       num_classes=1000,
+                       random_start=True,
+                       reinforce=False):
+    # Fix seed to start from the same random samples
+    if random_start:
+        torch.manual_seed(0)
+        x = torch.empty((n_examples, *input_size), device=device).uniform_()
+        y = torch.randint(low=0, high=num_classes, size=(n_examples, ), device=device)
+    else:
+        x, y = get_data(n_examples)
+        x, y = x.to(device), y.to(device)
+    attack_criterion = nn.NLLLoss(reduction="sum")
+    attack = attacks.make_attack("pgd",
+                                 eps,
+                                 1.5 * eps / pgd_steps,
+                                 pgd_steps,
+                                 "linf", (0, 1),
+                                 attack_criterion,
+                                 targeted=True,
+                                 random_targets=not random_start and not reinforce,
+                                 num_classes=num_classes)
     adv_x = attack(model, x, y)
     return x, adv_x, y
 

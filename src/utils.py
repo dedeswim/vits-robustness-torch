@@ -117,3 +117,17 @@ class AdvTrainState(bits.TrainState):
 @dataclasses.dataclass
 class MyPreprocessCfg(PreprocessCfg):
     normalize: bool = True
+
+
+class NormalizedModel(nn.Module):
+
+    def __init__(self, model: nn.Module, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)):
+        super().__init__()
+        self.model = model
+        mean = torch.as_tensor(mean).view(1, 3, 1, 1)
+        std = torch.as_tensor(std).view(1, 3, 1, 1)
+        self.register_buffer("mean", mean)
+        self.register_buffer("std", std)
+
+    def forward(self, x):
+        return self.model((x - self.mean / self.std))
