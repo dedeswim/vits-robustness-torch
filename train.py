@@ -76,6 +76,12 @@ def main():
                                                         unwrap_model(train_state.model).default_cfg, dev_env,
                                                         mixup_active)
 
+    if args.normalize_model:
+        train_state = replace(train_state,
+                              model=utils.normalize_model(train_state.model,
+                                                          mean=data_config["mean"],
+                                                          std=data_config["std"]))
+
     # setup checkpoint manager
     eval_metric = args.eval_metric
     best_metric = None

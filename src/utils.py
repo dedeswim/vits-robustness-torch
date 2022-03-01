@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import csv
 import dataclasses
 import glob
@@ -119,15 +120,23 @@ class MyPreprocessCfg(PreprocessCfg):
     normalize: bool = True
 
 
-class NormalizedModel(nn.Module):
+class ImageNormalizer(nn.Module):
+    """From
+    https://github.com/RobustBench/robustbench/blob/master/robustbench/model_zoo/architectures/utils_architectures.py#L8"""
 
-    def __init__(self, model: nn.Module, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)):
-        super().__init__()
-        self.model = model
-        mean = torch.as_tensor(mean).view(1, 3, 1, 1)
-        std = torch.as_tensor(std).view(1, 3, 1, 1)
-        self.register_buffer("mean", mean)
-        self.register_buffer("std", std)
+    def __init__(self, mean: Tuple[float, float, float], std: Tuple[float, float, float]) -> None:
+        super(ImageNormalizer, self).__init__()
 
-    def forward(self, x):
-        return self.model((x - self.mean / self.std))
+        self.register_buffer('mean', torch.as_tensor(mean).view(1, 3, 1, 1))
+        self.register_buffer('std', torch.as_tensor(std).view(1, 3, 1, 1))
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        return (input - self.mean) / self.std
+
+
+def normalize_model(model: nn.Module, mean: Tuple[float, float, float], std: Tuple[float, float,
+                                                                                   float]) -> nn.Module:
+    """From
+    https://github.com/RobustBench/robustbench/blob/master/robustbench/model_zoo/architectures/utils_architectures.py#L20"""
+    layers = OrderedDict([('normalize', ImageNormalizer(mean, std)), ('model', model)])
+    return nn.Sequential(layers)

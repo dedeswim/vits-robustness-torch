@@ -113,6 +113,10 @@ parser.add_argument('-nn',
                     action='store_true',
                     default=True,
                     help='Avoids normalizing inputs (but it scales them in [0, 1]')
+parser.add_argument('--normalize-model',
+                    action='store_true',
+                    default=True,
+                    help='Applies normalization as part of the model')
 
 # Optimizer parameters
 parser.add_argument('--opt', default='sgd', type=str, metavar='OPTIMIZER', help='Optimizer (default: "sgd"')
