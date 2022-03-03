@@ -81,6 +81,13 @@ def main():
                               model=utils.normalize_model(train_state.model,
                                                           mean=data_config["mean"],
                                                           std=data_config["std"]))
+        train_state = replace(train_state, model=dev_env.to_device(train_state.model))
+        if train_state.model_ema is not None:
+            train_state = replace(train_state,
+                                  model_ema=utils.normalize_model(train_state.model_ema,
+                                                                  mean=data_config["mean"],
+                                                                  std=data_config["std"]))
+            train_state = replace(train_state, model_ema=dev_env.to_device(train_state.model_ema))
 
     # setup checkpoint manager
     eval_metric = args.eval_metric
@@ -100,7 +107,7 @@ def main():
             ])
         output_dir = utils.get_outdir(args.output if args.output else './output/train', exp_name, inc=True)
         if output_dir.startswith("gs://"):
-            checkpoints_dir = tempfile.mkdtemp()
+            checkpoints_dir = utils.get_outdir('./output/tmp/', exp_name, inc=True)
             _logger.info(f"Temporarily saving checkpoints in {checkpoints_dir}")
         else:
             checkpoints_dir = output_dir
@@ -465,7 +472,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
 
 def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     data_config = resolve_data_config(vars(args), default_cfg=default_cfg, verbose=dev_env.primary)
-    data_config['normalize'] = not args.no_normalize
+    data_config['normalize'] = not (args.no_normalize or args.normalize_model)
 
     # create the train and eval datasets
     dataset_train = create_dataset(args.dataset,
