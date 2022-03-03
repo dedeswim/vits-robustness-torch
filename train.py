@@ -412,7 +412,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                                                  criterion=attack_criterion,
                                                  num_classes=model.num_classes,
                                                  logits_y=False)
-        compute_loss_fn = attacks.AdvTrainingLoss(train_attack, train_loss_fn)
+        compute_loss_fn = attacks.AdvTrainingLoss(train_attack, train_loss_fn, eval_mode=not dev_env.type_xla)
     elif args.adv_training is not None and args.adv_training == "trades":
         attack_criterion = nn.KLDivLoss(reduction="sum")
         train_attack = attacks.make_train_attack(args.attack,
@@ -785,7 +785,8 @@ def evaluate(model: nn.Module,
 
                 if attack is not None:
                     with torch.enable_grad():
-                        model.train()
+                        if dev_env.type_xla:
+                            model.train()
                         adv_sample = attack(model, sample, target)
                         model.eval()
                         adv_output = model(adv_sample)

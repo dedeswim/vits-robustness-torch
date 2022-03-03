@@ -170,14 +170,18 @@ def make_attack(attack: str,
 
 
 class AdvTrainingLoss(nn.Module):
-    def __init__(self, attack: TrainAttackFn, criterion: nn.Module):
+    def __init__(self, attack: TrainAttackFn, criterion: nn.Module, eval_mode: bool = False):
         super().__init__()
         self.attack = attack
         self.criterion = criterion
+        self.eval_mode = eval_mode
 
     def forward(self, model: nn.Module, x: torch.Tensor, y: torch.Tensor,
                 epoch: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        if self.eval_mode:
+            model.eval()
         x_adv = self.attack(model, x, y, epoch)
+        model.train()
         logits, logits_adv = model(x), model(x_adv)
         loss = self.criterion(logits_adv, y)
         return loss, logits, logits_adv
