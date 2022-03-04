@@ -29,6 +29,18 @@ parser.add_argument('--log-wandb',
                     default=False,
                     help='Log results to wandb using the run stored in the bucket')
 parser.add_argument('--upsample-in-model', action='store_true', default=False, help='')
+parser.add_argument('--mean',
+                    type=float,
+                    nargs='+',
+                    default=None,
+                    metavar='MEAN',
+                    help='Override mean pixel value of dataset')
+parser.add_argument('--std',
+                    type=float,
+                    nargs='+',
+                    default=None,
+                    metavar='STD',
+                    help='Override std deviation of of dataset')
 
 
 def main(args):
@@ -68,6 +80,11 @@ def main(args):
     else:
         preprocessing = transforms.ToTensor()
 
+    if args.mean is not None or args.std is not None:
+        mean = args.mean or (0, 0, 0)
+        std = args.std or (1, 1, 1)
+        model = utils.normalize_model(model, mean=mean, std=std)
+
     if args.upsample_in_model:
         model = nn.Sequential(
             transforms.Resize(scale_size, interpolation=transforms.InterpolationMode(interpolation)),
@@ -89,7 +106,7 @@ def main(args):
         args.attack_eps = args.eps / 255
         args.attack_steps = None
         args.attack = "autoattack"
-        args.threat_model = args.threat_model.lower()  # .lower() to comply with training convention
+        args.attack_norm = args.threat_model.lower()  # .lower() to comply with training convention
         results_dict = {'top1': clean_acc * 100, 'robust_top1': robust_acc * 100}
         log_results_to_wandb(args, results_dict)
 
