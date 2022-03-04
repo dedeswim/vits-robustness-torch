@@ -283,13 +283,22 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                 checkpoint_path = args.finetune
 
             checkpoint = torch.load(checkpoint_path, map_location='cpu')
-
-        checkpoint_model = checkpoint['model']
+        if 'model' in checkpoint:
+            checkpoint_model = checkpoint['model']
+        else:
+            checkpoint_model = checkpoint
         state_dict = model.state_dict()
         for k in ['head.weight', 'head.bias', 'head_dist.weight', 'head_dist.bias']:
             if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
                 print(f"Removing key {k} from pretrained checkpoint")
                 del checkpoint_model[k]
+
+        try:
+            num_classes = args.num_classes
+            model.reset_classifier(num_classes=num_classes)
+            print(f"Reset the classifier with {num_classes=}")
+        except AttributeError:
+            pass
 
         # interpolate position embedding
         try:

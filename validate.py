@@ -102,6 +102,10 @@ parser.add_argument('-nn',
                     action='store_true',
                     default=False,
                     help='Avoids normalizing inputs (but it scales them in [0, 1]')
+parser.add_argument('--normalize-model',
+                    action='store_true',
+                    default=False,
+                    help='Performs normalization as part of the model')
 parser.add_argument('--num-classes', type=int, default=None, help='Number classes in dataset')
 parser.add_argument('--class-map',
                     default='',
@@ -271,7 +275,12 @@ def validate(args):
     test_time_pool = False
     if args.test_pool:
         model, test_time_pool = apply_test_time_pool(model, data_config, use_test_size=True)
-    data_config['normalize'] = not args.no_normalize
+    data_config['normalize'] = not (args.no_normalize or args.normalize_model)
+
+    if args.normalize_model:
+        mean = args.mean or data_config["mean"]
+        std = args.std or data_config["std"]
+        model = utils.normalize_model(model, mean=mean, std=std)
 
     if args.torchscript:
         torch.jit.optimized_execution(True)
@@ -329,14 +338,11 @@ def validate(args):
         eps = args.attack_eps / 255
         lr = args.attack_lr or (1.5 * eps / args.attack_steps)
         attack_criterion = nn.NLLLoss(reduction="sum")
-        attack = attacks.make_attack(args.attack,
-                                     eps,
-                                     lr,
-                                     args.attack_steps,
-                                     args.attack_norm,
-                                     args.attack_boundaries,
-                                     attack_criterion,
-                                     verbose=args.verbose)
+        attack_kwargs = {}
+        if args.attack == "autoattack":
+            attack_kwargs["verbose"] = args.verbose
+        attack = attacks.make_attack(args.attack, eps, lr, args.attack_steps, args.attack_norm,
+                                     args.attack_boundaries, attack_criterion, **attack_kwargs)
     else:
         attack = None
 
