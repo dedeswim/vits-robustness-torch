@@ -1,4 +1,4 @@
-aa: None 
+aa: rand-m9-mstd0.5-inc1 
 adv_training: null
 amp: false
 attack: pgd
@@ -23,7 +23,7 @@ clip_mode: norm
 color_jitter: 0.4
 cooldown_epochs: 10
 crop_pct: null
-cutmix: 0.0
+cutmix: 1.0
 cutmix_minmax: null
 data_dir: ~/tensorflow_datasets/
 dataset: tfds/caltech101
@@ -70,7 +70,7 @@ mean:
   - 0.5
   - 0.5
 min_lr: 5.0e-6
-mixup: 0.0
+mixup: 0.8
 mixup_mode: batch
 mixup_off_epoch: 0
 mixup_prob: 1.0
@@ -97,7 +97,7 @@ ratio:
 recount: 1
 recovery_interval: 0
 remode: pixel
-reprob: 0.0
+reprob: 0.25
 resplit: false
 resume: ''
 save_images: false
@@ -124,5 +124,5 @@ validation_batch_size: null
 vflip: 0.0
 warmup_epochs: 5
 warmup_lr: 1.0e-06
-weight_decay: 0.5
+weight_decay: 0.05
 workers: 4
