@@ -47,17 +47,17 @@ def load_state_dict_from_gcs(model: nn.Module, checkpoint_path: str):
 
 
 @dataclasses.dataclass
-class ImagenetPerturbationsConfig(tfds.core.BuilderConfig):
+class ImagenetAdvexConfig(tfds.core.BuilderConfig):
     model: str = ""
     checkpoint_path: str = ""
     eps: float = 4 / 255
-    steps = 1
     dataset_name: str = "tfds/robustbench_image_net"
     norm: str = "linf"
     boundaries: Tuple[float, float] = (0., 1.)
     mean: Optional[Tuple[float, float, float]] = None
     std: Optional[Tuple[float, float, float]] = None
     crop_pct: Optional[float] = None
+    steps: int = 1
 
 
 class ImagenetAdvex(tfds.core.GeneratorBasedBuilder):
@@ -71,28 +71,28 @@ class ImagenetAdvex(tfds.core.GeneratorBasedBuilder):
     Same manual download instructions as ImageNet
     """
     BUILDER_CONFIGS = [
-        ImagenetPerturbationsConfig(name="resnet50_FGSM",
-                                    model="resnet50",
-                                    checkpoint_path="gs://robust-vits/external-checkpoints/advres50_gelu.pth",
-                                    boundaries=(-1, 1),
-                                    mean=(0.5, 0.5, 0.5),
-                                    std=(0.5, 0.5, 0.5),
-                                    eps=8 / 255),
-        ImagenetPerturbationsConfig(name="xcit_small_12_p16_224_FGSM",
-                                    model="xcit_small_12_p16_224",
-                                    checkpoint_path="gs://robust-vits/xcit/best.pth.tar"),
-        ImagenetPerturbationsConfig(name="resnet50_PGD10",
-                                    model="resnet50",
-                                    checkpoint_path="gs://robust-vits/external-checkpoints/advres50_gelu.pth",
-                                    boundaries=(-1, 1),
-                                    mean=(0.5, 0.5, 0.5),
-                                    std=(0.5, 0.5, 0.5),
-                                    eps=8 / 255,
-                                    steps=10),
-        ImagenetPerturbationsConfig(name="xcit_small_12_p16_224_PGD10",
-                                    model="xcit_small_12_p16_224",
-                                    checkpoint_path="gs://robust-vits/xcit/best.pth.tar",
-                                    steps=10)
+        ImagenetAdvexConfig(name="resnet50_FGSM",
+                            model="resnet50",
+                            checkpoint_path="gs://robust-vits/external-checkpoints/advres50_gelu.pth",
+                            boundaries=(-1, 1),
+                            mean=(0.5, 0.5, 0.5),
+                            std=(0.5, 0.5, 0.5),
+                            eps=8 / 255),
+        ImagenetAdvexConfig(name="xcit_small_12_p16_224_FGSM",
+                            model="xcit_small_12_p16_224",
+                            checkpoint_path="gs://robust-vits/xcit/best.pth.tar"),
+        ImagenetAdvexConfig(name="resnet50_PGD10",
+                            model="resnet50",
+                            checkpoint_path="gs://robust-vits/external-checkpoints/advres50_gelu.pth",
+                            boundaries=(-1, 1),
+                            mean=(0.5, 0.5, 0.5),
+                            std=(0.5, 0.5, 0.5),
+                            eps=8 / 255,
+                            steps=10),
+        ImagenetAdvexConfig(name="xcit_small_12_p16_224_PGD10",
+                            model="xcit_small_12_p16_224",
+                            checkpoint_path="gs://robust-vits/xcit/best.pth.tar",
+                            steps=10)
     ]
 
     BATCH_SIZE = 128
@@ -138,7 +138,7 @@ class ImagenetAdvex(tfds.core.GeneratorBasedBuilder):
         }
 
         data_config = resolve_data_config(data_config, model=model)
-        pp_cfg = PreprocessCfg(  # type: ignore 
+        pp_cfg = PreprocessCfg(  # type: ignore
             input_size=data_config['input_size'],
             interpolation=data_config['interpolation'],
             crop_pct=data_config['crop_pct'],
