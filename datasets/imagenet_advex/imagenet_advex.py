@@ -1,4 +1,4 @@
-"""imagenet_perturbations dataset."""
+"""imagenet_advex dataset."""
 
 import dataclasses
 import os
