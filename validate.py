@@ -12,6 +12,7 @@ import argparse
 import csv
 import glob
 import logging
+import math
 import os
 from collections import OrderedDict
 from typing import Dict
@@ -212,10 +213,10 @@ parser.add_argument('--log-wandb',
                     default=False,
                     help='Log results to wandb using the run stored in the bucket')
 parser.add_argument('--num-examples',
-                    default=5000,
+                    default=None,
                     type=int,
                     metavar='EXAMPLES',
-                    help='Number of examples to use for the evaluation (default 5000)')
+                    help='Number of examples to use for the evaluation (default the entire dataset)')
 parser.add_argument('--patch-size', default=None, type=int, metavar='N', help='The patch size to use')
 parser.add_argument('--verbose', action='store_true', default=False, help='Runs autoattack in verbose mode')
 
@@ -348,6 +349,9 @@ def validate(args):
 
     model.eval()
     num_steps = len(loader)
+    if args.num_examples is not None:
+        num_steps = int(math.ceil(args.num_examples / args.batch_size))
+
     with torch.no_grad():
         tracker.mark_iter()
         for step_idx, (sample, target) in enumerate(loader):
@@ -399,6 +403,9 @@ def validate(args):
                     robust_top1=robust_top1.item(),
                     robust_top5=robust_top5.item(),
                 )
+
+            if last_step:
+                break
 
     if real_labels is not None:
         # real labels mode replaces topk values at the end
