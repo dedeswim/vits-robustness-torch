@@ -1,5 +1,18 @@
 # ViTs Robustness
 
+# Pre-requisites
+
+This repo works with:
+
+- Python `3.8.10`, and will probably work with newer versions.
+- `torch==1.8.1` and `1.10.1`, and it will probably work with PyTorch `1.9.x`.
+- `torchvision==0.9.1` and `0.11.2`, and it will probably work with torchvision `0.10.x`.
+- The other requirements are in `requirements.txt`, hence they can be installed with `pip install -r requirements.txt`
+
+In case you want to use Weights and Biases, after installing the requisites, install `wandb` with `pip install wandb`, and run `wandb login`.
+
+In case you want to read or write your results to a Google Cloud Storage bucket (which is supported by this repo), install the [`gcloud` CLI](https://cloud.google.com/sdk/gcloud), and login. Then you are ready to use GCS for both storing data and experiments results, as well as download checkpoints by using paths in the form of `gs://bucket-name/path-to-dir-or-file`.
+
 ## Training
 
 ```bash
