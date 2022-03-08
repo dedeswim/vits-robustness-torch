@@ -465,7 +465,7 @@ parser.add_argument('--attack',
                     metavar='ATTACK',
                     help='What attack to use (default: "pgd")')
 parser.add_argument('--attack-eps',
-                    default=4 / 255,
+                    default=4,
                     type=float,
                     metavar='EPS',
                     help='The epsilon to use for the attack (default 4/255)')
@@ -485,7 +485,7 @@ parser.add_argument('--zero-eps-epochs',
                     metavar='EPOCHS',
                     help='How many epochs eps should be 0')
 parser.add_argument('--attack-lr',
-                    default=1 / 255,
+                    default=None,
                     type=float,
                     metavar='ATTACK_LR',
                     help='Learning rate for the attack (default 1e-4)')

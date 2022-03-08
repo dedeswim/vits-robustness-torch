@@ -414,14 +414,17 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         train_loss_fn = nn.CrossEntropyLoss()
     eval_loss_fn = nn.CrossEntropyLoss()
 
+    eps = args.attack_eps / 255
+    attack_step_size = args.attack_lr or (1.5 * eps / args.attack_steps)
+
     if args.adv_training is not None and args.adv_training == "pgd":
         attack_criterion: nn.Module = nn.NLLLoss(reduction="sum")
         train_attack = attacks.make_train_attack(args.attack,
                                                  args.eps_schedule,
-                                                 args.attack_eps,
+                                                 eps,
                                                  args.eps_schedule_period,
                                                  args.zero_eps_epochs,
-                                                 args.attack_lr,
+                                                 attack_step_size,
                                                  args.attack_steps,
                                                  args.attack_norm,
                                                  args.attack_boundaries,
@@ -433,11 +436,11 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         attack_criterion = nn.KLDivLoss(reduction="sum")
         train_attack = attacks.make_train_attack(args.attack,
                                                  args.eps_schedule,
-                                                 args.attack_eps,
+                                                 eps,
                                                  args.eps_schedule_period,
                                                  args.zero_eps_epochs,
                                                  args.attack_lr,
-                                                 args.attack_steps,
+                                                 attack_step_size,
                                                  args.attack_norm,
                                                  args.attack_boundaries,
                                                  criterion=attack_criterion,
