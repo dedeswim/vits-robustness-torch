@@ -5,8 +5,8 @@ attack: pgd
 attack_boundaries:
 - 0
 - 1
-attack_eps: 0.03137254901960784
-attack_lr: 0.009411764705882352
+attack_eps: 8
+attack_lr: null
 attack_norm: linf
 attack_steps: 1
 aug_splits: 0
