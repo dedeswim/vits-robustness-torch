@@ -71,17 +71,17 @@ class ImagenetAdvex(tfds.core.GeneratorBasedBuilder):
     Same manual download instructions as ImageNet
     """
     BUILDER_CONFIGS = [
-        ImagenetAdvexConfig(name="resnet50_FGSM",
+        ImagenetAdvexConfig(name="resnet50_fgsm",
                             model="resnet50",
                             checkpoint_path="gs://robust-vits/external-checkpoints/advres50_gelu.pth",
                             boundaries=(-1, 1),
                             mean=(0.5, 0.5, 0.5),
                             std=(0.5, 0.5, 0.5),
                             eps=8 / 255),
-        ImagenetAdvexConfig(name="xcit_small_12_p16_224_FGSM",
+        ImagenetAdvexConfig(name="xcit_small_12_p16_224_fgsm",
                             model="xcit_small_12_p16_224",
                             checkpoint_path="gs://robust-vits/xcit/best.pth.tar"),
-        ImagenetAdvexConfig(name="resnet50_PGD10",
+        ImagenetAdvexConfig(name="resnet50_pgd10",
                             model="resnet50",
                             checkpoint_path="gs://robust-vits/external-checkpoints/advres50_gelu.pth",
                             boundaries=(-1, 1),
@@ -89,7 +89,7 @@ class ImagenetAdvex(tfds.core.GeneratorBasedBuilder):
                             std=(0.5, 0.5, 0.5),
                             eps=8 / 255,
                             steps=10),
-        ImagenetAdvexConfig(name="xcit_small_12_p16_224_PGD10",
+        ImagenetAdvexConfig(name="xcit_small_12_p16_224_pgd10",
                             model="xcit_small_12_p16_224",
                             checkpoint_path="gs://robust-vits/xcit/best.pth.tar",
                             steps=10)

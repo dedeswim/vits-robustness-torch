@@ -1,7 +1,6 @@
 """image_net_subset dataset."""
 
 import io
-import jax
 import numpy as np
 import tensorflow_datasets as tfds
 
