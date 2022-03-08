@@ -8,7 +8,7 @@ attack_boundaries:
 attack_eps: 0.03137254901960784
 attack_lr: 0.009411764705882352
 attack_norm: linf
-attack_steps: 5
+attack_steps: 1
 aug_splits: 0
 batch_size: 64 
 bce_loss: false
@@ -39,7 +39,7 @@ epochs: 20
 eps_schedule: constant 
 eps_schedule_period: 10
 eval_metric: robust_top1
-experiment: xcit-adv-finetuning-small
+experiment: xcit-adv-finetuning-gpu
 finetune: gs://robust-vits/xcit-adv-pretraining-3/best.pth.tar
 finetuning_patch_size: 4
 force_cpu: false
@@ -65,7 +65,10 @@ lr_k_decay: 1.0
 lr_noise: null
 lr_noise_pct: 0.67
 lr_noise_std: 1.0
-mean: null
+mean:
+  - 0.4914
+  - 0.4822
+  - 0.4465
 min_lr: 5.0e-6
 mixup: 0.0
 mixup_mode: batch
@@ -79,6 +82,7 @@ momentum: 0.9
 no_aug: false
 no_normalize: true
 no_resume_opt: false
+normalize_model: true
 num_classes: 10
 opt: adamw 
 opt_betas: null
@@ -88,8 +92,8 @@ patience_epochs: 10
 pin_mem: false
 pretrained: false
 ratio:
-- 1.0
-- 1.0
+- 0.75
+- 1.3333333333333333
 recount: 1
 recovery_interval: 0
 remode: pixel
@@ -98,14 +102,17 @@ resplit: false
 resume: ''
 save_images: false
 scale:
-- 1.0
+- 0.08
 - 1.0
 sched: cosine
 seed: 42
 smoothing: 0.1
 split_bn: false
 start_epoch: null
-std: null
+std:
+  - 0.2471
+  - 0.2435
+  - 0.2616
 sync_bn: false
 torchscript: false
 train_interpolation: bicubic
