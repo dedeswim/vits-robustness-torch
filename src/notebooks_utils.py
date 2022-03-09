@@ -64,7 +64,7 @@ def get_synth_examples(model,
     return x, adv_x, y
 
 
-def show_grid(xs, ncols=6, cmap=None, labels=None):
+def show_grid(xs, ncols=6, cmap=None, labels=None, filename=None):
     if len(xs.shape) > 3:
         xs = [np.asarray(F.to_pil_image(x)) for x in xs]
     fig = plt.figure(figsize=(30, 30))
@@ -81,3 +81,6 @@ def show_grid(xs, ncols=6, cmap=None, labels=None):
         if labels is not None:
             ax.set_title(labels[i], fontdict={'fontsize': 20}, pad=20)
         ax.set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
+
+    if filename is not None:
+        fig.savefig(filename)

@@ -280,3 +280,4 @@ fabric.properties
 
 .uuid
 checkpoints
+notebooks/outputs
