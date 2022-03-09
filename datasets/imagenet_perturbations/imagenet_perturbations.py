@@ -123,6 +123,7 @@ class ImagenetPerturbations(tfds.core.GeneratorBasedBuilder):
         else:
             model = load_model_from_gcs(self.builder_config.checkpoint_path, self.builder_config.model)
         model.to(dev_env.device)
+        model.eval()
 
         root = self._original_state["data_dir"]
         original_dataset = create_dataset(self.builder_config.dataset_name, root=root, is_training=False)
@@ -134,7 +135,7 @@ class ImagenetPerturbations(tfds.core.GeneratorBasedBuilder):
         }
 
         data_config = resolve_data_config(data_config, model=model)
-        pp_cfg = PreprocessCfg(  # type: ignore 
+        pp_cfg = PreprocessCfg(  # type: ignore
             input_size=data_config['input_size'],
             interpolation=data_config['interpolation'],
             crop_pct=data_config['crop_pct'],

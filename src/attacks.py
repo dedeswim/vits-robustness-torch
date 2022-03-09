@@ -29,6 +29,19 @@ def init_linf(x: torch.Tensor, eps: float, project_fn: ProjectFn, boundaries: Bo
     return project_fn(x, x_adv, eps, boundaries)
 
 
+def init_l2(x: torch.Tensor, eps: float, project_fn: ProjectFn, boundaries: Boundaries) -> torch.Tensor:
+    x_adv = x.detach() + torch.zeros_like(x.detach(), device=x.device).normal_(-eps, eps) + 1e-5
+    return project_fn(x, x_adv, eps, boundaries)
+
+
+def project_l2(x: torch.Tensor, x_adv: torch.Tensor, eps: float, boundaries: Boundaries) -> torch.Tensor:
+    clip_min, clip_max = boundaries
+    d_x = x_adv - x.detach()
+    d_x_norm = d_x.renorm(p=2, dim=0, maxnorm=eps)
+    x_adv = torch.clamp(x + d_x_norm, clip_min, clip_max)
+    return x_adv
+
+
 def pgd(model: nn.Module,
         x: torch.Tensor,
         y: torch.Tensor,
@@ -42,7 +55,8 @@ def pgd(model: nn.Module,
         targeted: bool = False,
         num_classes: Optional[int] = None,
         random_targets: bool = False,
-        logits_y: bool = False) -> torch.Tensor:
+        logits_y: bool = False,
+        take_sign=True) -> torch.Tensor:
     local_project_fn = functools.partial(project_fn, eps=eps, boundaries=boundaries)
     x_adv = init_fn(x, eps, project_fn, boundaries)
     if random_targets:
@@ -57,23 +71,30 @@ def pgd(model: nn.Module,
             y,
         )
         grad = torch.autograd.grad(loss, x_adv)[0]
+        if take_sign:
+            d_x = torch.sign(grad)
+        else:
+            d_x = grad
         if targeted:
             # Minimize the loss if the attack is targeted
-            x_adv = x_adv.detach() - step_size * torch.sign(grad)
+            x_adv = x_adv.detach() - step_size * d_x
         else:
-            x_adv = x_adv.detach() + step_size * torch.sign(grad)
+            x_adv = x_adv.detach() + step_size * d_x
 
         x_adv = local_project_fn(x, x_adv)
 
     return x_adv
 
 
-_ATTACKS = {"pgd": pgd, "targeted_pgd":
-            functools.partial(pgd, targeted=True, random_targets=True)}
-_INIT_PROJECT_FN: Dict[str, Tuple[InitFn, ProjectFn]] = {"linf": (init_linf, project_linf)}
+_ATTACKS = {"pgd": pgd, "targeted_pgd": functools.partial(pgd, targeted=True, random_targets=True)}
+_INIT_PROJECT_FN: Dict[str, Tuple[InitFn, ProjectFn]] = {
+    "linf": (init_linf, project_linf),
+    "l2": (init_l2, project_l2)
+}
 
 
 def make_sine_schedule(final: float, warmup: int, zero_eps_epochs: int) -> Callable[[int], float]:
+
     def sine_schedule(step: int) -> float:
         if step < zero_eps_epochs:
             return 0.0
@@ -85,6 +106,7 @@ def make_sine_schedule(final: float, warmup: int, zero_eps_epochs: int) -> Calla
 
 
 def make_linear_schedule(final: float, warmup: int, zero_eps_epochs: int) -> Callable[[int], float]:
+
     def linear_schedule(step: int) -> float:
         if step < zero_eps_epochs:
             return 0.0
@@ -170,6 +192,7 @@ def make_attack(attack: str,
 
 
 class AdvTrainingLoss(nn.Module):
+
     def __init__(self, attack: TrainAttackFn, criterion: nn.Module, eval_mode: bool = False):
         super().__init__()
         self.attack = attack
@@ -188,6 +211,7 @@ class AdvTrainingLoss(nn.Module):
 
 
 class TRADESLoss(nn.Module):
+
     def __init__(self, attack: TrainAttackFn, natural_criterion: nn.Module, beta: float):
         super().__init__()
         self.attack = attack

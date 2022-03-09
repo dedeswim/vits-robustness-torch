@@ -127,6 +127,7 @@ class ImagenetAdvex(tfds.core.GeneratorBasedBuilder):
         else:
             model = load_model_from_gcs(self.builder_config.checkpoint_path, self.builder_config.model)
         model.to(dev_env.device)
+        model.eval()
 
         root = self._original_state["data_dir"]
         original_dataset = create_dataset(self.builder_config.dataset_name, root=root, is_training=False)
