@@ -64,7 +64,7 @@ def get_synth_examples(model,
     return x, adv_x, y
 
 
-def show_grid(xs, ncols=6, cmap=None, labels=None, filename=None):
+def show_grid(xs, ncols=4, cmap=None, labels=None, filename=None):
     if len(xs.shape) > 3:
         xs = [np.asarray(F.to_pil_image(x)) for x in xs]
     fig = plt.figure(figsize=(30, 30))
