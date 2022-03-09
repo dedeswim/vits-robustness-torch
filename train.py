@@ -162,11 +162,12 @@ def main():
     if args.adv_training is not None:
         attack_criterion = nn.NLLLoss(reduction="sum")
         dev_env.to_device(attack_criterion)
-        eps = args.eval_attack_eps or args.attack_eps
         eval_attack_name = args.attack.split("targeted_")[-1]
+        eps = (args.eval_attack_eps or args.attack_eps) / 255
+        attack_step_size = args.attack_lr or (1.5 * eps / args.attack_steps)
         eval_attack = attacks.make_attack(eval_attack_name,
                                           eps,
-                                          args.attack_lr,
+                                          attack_step_size,
                                           args.attack_steps,
                                           args.attack_norm,
                                           args.attack_boundaries,
@@ -606,8 +607,8 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     )
 
     eval_workers = args.workers
-    if 'tfds' in args.dataset:
-        # FIXME reduce validation issues when using TFDS w/ workers and distributed training
+    if 'tfds' in args.dataset or 'wds' in args.dataset:
+        # FIXME reduces validation padding issues when using TFDS w/ workers and distributed training
         eval_workers = min(2, args.workers)
     loader_eval = create_loader_v2(
         dataset_eval,
