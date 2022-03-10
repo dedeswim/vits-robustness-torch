@@ -169,7 +169,7 @@ def make_attack(attack: str,
                 criterion: nn.Module,
                 device: Optional[torch.device] = None,
                 **attack_kwargs) -> AttackFn:
-    if attack != "autoattack":
+    if attack not in {"autoattack", "apgd-ce"}:
         attack_fn = _ATTACKS[attack]
         init_fn, project_fn = _INIT_PROJECT_FN[norm]
         return functools.partial(attack_fn,
@@ -181,6 +181,9 @@ def make_attack(attack: str,
                                  project_fn=project_fn,
                                  criterion=criterion,
                                  **attack_kwargs)
+    if attack in {"apgd-ce"}:
+        attack_kwargs["version"] = "custom"
+        attack_kwargs["attacks_to_run"] = [attack]
 
     def autoattack_fn(model: nn.Module, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         assert isinstance(eps, float)
@@ -222,7 +225,7 @@ class TRADESLoss(nn.Module):
     def forward(self, model: nn.Module, x: torch.Tensor, y: torch.Tensor,
                 epoch: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_size = x.size(0)
-        # model.eval()  # FIXME: understand why with eval the gradient
+        model.eval()  # FIXME: understand why with eval the gradient
         # of BatchNorm crashes
         output_softmax = F.softmax(model(x.detach()), dim=-1)
         x_adv = self.attack(model, x, output_softmax, epoch)

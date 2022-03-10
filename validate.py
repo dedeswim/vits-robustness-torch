@@ -340,7 +340,7 @@ def validate(args):
         lr = args.attack_lr or (1.5 * eps / args.attack_steps)
         attack_criterion = nn.NLLLoss(reduction="sum")
         attack_kwargs = {}
-        if args.attack == "autoattack":
+        if args.attack in {"autoattack", "apgd-ce"}:
             attack_kwargs["verbose"] = args.verbose
         attack = attacks.make_attack(args.attack, eps, lr, args.attack_steps, args.attack_norm,
                                      args.attack_boundaries, attack_criterion, **attack_kwargs)

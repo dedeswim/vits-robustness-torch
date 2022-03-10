@@ -1,5 +1,6 @@
 """imagenet_perturbations dataset."""
 
+from collections import OrderedDict
 import dataclasses
 import os
 import tempfile
@@ -12,7 +13,7 @@ import timm
 import torch
 import torchvision.transforms.functional as F
 from timm.bits import initialize_device
-from timm.data import create_dataset, create_loader_v2, resolve_data_config, PreprocessCfg
+from timm.data import create_dataset, create_loader_v2, resolve_data_config, PreprocessCfg, constants
 from torch import nn
 from torchvision import transforms
 
@@ -27,7 +28,7 @@ Only validation examples are computed, so use only for validating.
 _CITATION = """
 """
 
-MODELS_TO_NORMALIZE = {"adv_resnet50", "deit_small_patch16_224"}
+MODELS_TO_NORMALIZE = {"adv_resnet50", "deit_small_patch16_224", "xcit_small_12_p16_224_nonrobust"}
 
 
 def load_model_from_gcs(checkpoint_path: str, model_name: str, **kwargs):
@@ -46,18 +47,41 @@ def load_state_dict_from_gcs(model: nn.Module, checkpoint_path: str):
     return model
 
 
+class ImageNormalizer(nn.Module):
+    """From
+    https://github.com/RobustBench/robustbench/blob/master/robustbench/model_zoo/architectures/utils_architectures.py#L8"""
+
+    def __init__(self, mean: Tuple[float, float, float], std: Tuple[float, float, float]) -> None:
+        super(ImageNormalizer, self).__init__()
+
+        self.register_buffer('mean', torch.as_tensor(mean).view(1, 3, 1, 1))
+        self.register_buffer('std', torch.as_tensor(std).view(1, 3, 1, 1))
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        return (input - self.mean) / self.std
+
+
+def normalize_model(model: nn.Module, mean: Tuple[float, float, float], std: Tuple[float, float,
+                                                                                   float]) -> nn.Module:
+    """From
+    https://github.com/RobustBench/robustbench/blob/master/robustbench/model_zoo/architectures/utils_architectures.py#L20"""
+    layers = OrderedDict([('normalize', ImageNormalizer(mean, std)), ('model', model)])
+    return nn.Sequential(layers)
+
+
 @dataclasses.dataclass
 class ImagenetPerturbationsConfig(tfds.core.BuilderConfig):
     model: str = ""
     checkpoint_path: str = ""
     eps: float = 4 / 255
-    steps = 100
+    steps: int = 100
     dataset_name: str = "tfds/robustbench_image_net"
     norm: str = "linf"
     boundaries: Tuple[float, float] = (0., 1.)
     mean: Optional[Tuple[float, float, float]] = None
     std: Optional[Tuple[float, float, float]] = None
     crop_pct: Optional[float] = None
+    pretrained: bool = False
 
 
 class ImagenetPerturbations(tfds.core.GeneratorBasedBuilder):
@@ -71,27 +95,32 @@ class ImagenetPerturbations(tfds.core.GeneratorBasedBuilder):
     Same manual download instructions as ImageNet
     """
     BUILDER_CONFIGS = [
+        ImagenetPerturbationsConfig(name="resnet50_fgsm",
+                                    model="resnet50",
+                                    checkpoint_path="gs://robust-vits/external-checkpoints/advres50_gelu.pth",
+                                    mean=(0.5, 0.5, 0.5),
+                                    std=(0.5, 0.5, 0.5),
+                                    steps=1),
+        ImagenetPerturbationsConfig(name="xcit_small_12_p16_224_fgsm",
+                                    model="xcit_small_12_p16_224",
+                                    checkpoint_path="gs://robust-vits/xcit/best.pth.tar",
+                                    steps=1),
         ImagenetPerturbationsConfig(name="resnet50",
                                     model="resnet50",
                                     checkpoint_path="gs://robust-vits/external-checkpoints/advres50_gelu.pth",
-                                    boundaries=(-1, 1),
                                     mean=(0.5, 0.5, 0.5),
-                                    std=(0.5, 0.5, 0.5),
-                                    eps=8 / 255),
+                                    std=(0.5, 0.5, 0.5)),
         ImagenetPerturbationsConfig(name="xcit_small_12_p16_224",
                                     model="xcit_small_12_p16_224",
                                     checkpoint_path="gs://robust-vits/xcit/best.pth.tar"),
-        ImagenetPerturbationsConfig(name="deit_small_patch16_224",
-                                    model="deit_small_patch16_224",
-                                    checkpoint_path="gs://robust-vits/external-checkpoints/advdeit_small.pth",
-                                    boundaries=(-1, 1),
-                                    mean=(0.5, 0.5, 0.5),
-                                    std=(0.5, 0.5, 0.5),
-                                    eps=8 / 255,
-                                    crop_pct=0.875)
+        ImagenetPerturbationsConfig(name="xcit_small_12_p16_224_nonrobust",
+                                    model="xcit_small_12_p16_224",
+                                    pretrained=True,
+                                    mean=constants.IMAGENET_DEFAULT_MEAN,
+                                    std=constants.IMAGENET_DEFAULT_STD)
     ]
 
-    BATCH_SIZE = 128
+    BATCH_SIZE = 256
 
     def _info(self) -> tfds.core.DatasetInfo:
         """Returns the dataset metadata."""
@@ -113,15 +142,22 @@ class ImagenetPerturbations(tfds.core.GeneratorBasedBuilder):
 
     def _split_generators(self, _: tfds.download.DownloadManager):
         """Returns SplitGenerators."""
-        # TODO: instantiate dataset and loader here for the given model
-        # TODO: create model here and pass it to _generate_examples
         dev_env = initialize_device()
 
         if self.builder_config.model == "resnet50":
             model = load_state_dict_from_gcs(resnet50(norm_layer=EightBN),
                                              self.builder_config.checkpoint_path)
-        else:
+        elif self.builder_config.checkpoint_path:
             model = load_model_from_gcs(self.builder_config.checkpoint_path, self.builder_config.model)
+        elif self.builder_config.pretrained:
+            model = timm.create_model(self.builder_config.model, pretrained=True)
+        else:
+            raise ValueError(f"For {self.builder_config.name}, either the checkpoint"
+                             "should be specified, or pretrained should be `True`")
+
+        if self.builder_config.model in MODELS_TO_NORMALIZE:
+            model = normalize_model(model, self.builder_config.mean, self.builder_config.std)
+
         model.to(dev_env.device)
         model.eval()
 
@@ -146,9 +182,7 @@ class ImagenetPerturbations(tfds.core.GeneratorBasedBuilder):
                                   is_training=False,
                                   pp_cfg=pp_cfg,
                                   num_workers=2)
-        if self.builder_config.model not in MODELS_TO_NORMALIZE:
-            # Do not normalize if model is not from the other paper
-            loader.dataset.transform.transforms[-1] = transforms.ToTensor()
+        loader.dataset.transform.transforms[-1] = transforms.ToTensor()
 
         eps = self.builder_config.eps
         steps = self.builder_config.steps
