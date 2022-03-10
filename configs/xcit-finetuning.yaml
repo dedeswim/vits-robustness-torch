@@ -5,8 +5,8 @@ attack: pgd
 attack_boundaries:
 - 0
 - 1
-attack_eps: 0.031372549
-attack_lr: 0.034509804
+attack_eps: 8
+attack_lr: null
 attack_norm: linf
 attack_steps: 1
 aug_splits: 0
@@ -40,6 +40,8 @@ eps_schedule: linear
 eps_schedule_period: 10
 eval_metric: top1
 experiment: xcit-finetuning
+finetune: gs://robust-vits/xcit-adv-pretraining-3/best.pth.tar
+finetuning_patch_size: null
 force_cpu: false
 gp: null
 hflip: 0.5
@@ -73,6 +75,7 @@ momentum: 0.9
 no_aug: false
 no_normalize: true
 no_resume_opt: false
+normalize_model: false
 num_classes: 10
 opt: adamw 
 opt_betas: null
