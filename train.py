@@ -659,7 +659,7 @@ def train_one_epoch(
         tracker.mark_iter_data_end()
 
         # FIXME move forward + loss into model 'task' wrapper
-        with dev_env.autocast(), torch.autograd.set_detect_anomaly(True):
+        with dev_env.autocast():
             loss, output, adv_output = state.compute_loss_fn(state.model, sample, target, state.epoch)
 
         state.updater.apply(loss)

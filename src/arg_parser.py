@@ -21,6 +21,10 @@ parser.add_argument('--dataset',
                     metavar='NAME',
                     default='',
                     help='dataset type (default: ImageFolder/ImageTar if empty)')
+parser.add_argument('--dataset-to-mix',
+                    metavar='NAME',
+                    default=None,
+                    help='Dataset to mix with the original one')
 parser.add_argument('--train-split',
                     metavar='NAME',
                     default='train',
@@ -115,7 +119,7 @@ parser.add_argument('-nn',
                     help='Avoids normalizing inputs (but it scales them in [0, 1]')
 parser.add_argument('--normalize-model',
                     action='store_true',
-                    default=True,
+                    default=False,
                     help='Applies normalization as part of the model')
 
 # Optimizer parameters
