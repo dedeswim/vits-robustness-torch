@@ -30,6 +30,9 @@ class CifarDdpm(tfds.core.GeneratorBasedBuilder):
     DIRECTORY = Path("cifar_ddpm") / "cifar10_ddpm_serialized"
     IMGS_FILENAME = "cifar_ddpm_improvedddpm_sorted_images.bin"
     LABELS_FILENAME = "cifar_ddpm_improvedddpm_sorted_labels.npy"
+    MANUAL_DOWNLOAD_INSTRUCTIONS = """
+    Download the data and place them in "<manual_dir>/cifar_ddpm"
+    """
 
     def _info(self) -> tfds.core.DatasetInfo:
         """Returns the dataset metadata."""
@@ -51,9 +54,9 @@ class CifarDdpm(tfds.core.GeneratorBasedBuilder):
 
     def _split_generators(self, dl_manager: tfds.download.DownloadManager):
         """Returns SplitGenerators."""
-        imgs_path = dl_manager.download_dir / self.DIRECTORY / self.IMGS_FILENAME
-        labels_path = dl_manager.download_dir / self.DIRECTORY / self.LABELS_FILENAME
-        with tf.io.gfile.GFile(labels_path) as df:
+        imgs_path = dl_manager.manual_dir / self.DIRECTORY / self.IMGS_FILENAME
+        labels_path = dl_manager.manual_dir / self.DIRECTORY / self.LABELS_FILENAME
+        with tf.io.gfile.GFile(labels_path, "rb") as df:
             labels = np.load(df)
 
         return {
@@ -63,13 +66,13 @@ class CifarDdpm(tfds.core.GeneratorBasedBuilder):
     def _sample_image(self, df, idx):
         df.seek(idx * 3072)
         image = np.array(np.frombuffer(df.read(3072), dtype="uint8").reshape(32, 32, 3))
-        return np.transpose(image, (2, 0, 1)).astype(np.float32) / 255.0
+        return image
 
     def _generate_examples(self, imgs_path, labels):
         """Yields examples."""
         with tf.io.gfile.GFile(imgs_path, "rb") as df:
             for idx in range(self.LEN):
-                img = self.sample_image(df, idx)
+                img = self._sample_image(df, idx)
                 yield idx, {
                     'image': img,
                     'label': labels[idx],
