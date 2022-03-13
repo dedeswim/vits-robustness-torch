@@ -19,6 +19,8 @@ command:
   - "--finetune"
   - "/shadowdata/vvikash/spring22/edoardo/vits-robustness-torch/checkpoints/xcit_s_eps_8.pth.tar"
   - "--log-wandb"
+  - "--experiment"
+  - "xcit-adv-finetuning-gpu_cifar10_ablations"
   - ${args}
 parameters:
   lr:
