@@ -35,7 +35,8 @@ then
     
     for wd in 0.05 0.5 1.0
     do 
-        HYPERPARAMS="--epochs 20 --color-jitter 0.0 --cutmix 1.0 --weight-decay ${wd} --smoothing 0.0 --cooldown-epoch 2"
+        HYPERPARAMS="--epochs 20 --color-jitter 0.0 --cutmix 0.0 --reprob 0.20 --weight-decay ${wd} --smoothing 0.0 
+            --cooldown-epoch 2"
         beta=6.0
         lr=0.00005
         CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --master_port=6712 train.py \
