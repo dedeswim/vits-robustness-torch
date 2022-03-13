@@ -586,16 +586,24 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
             loader_train.mean = None
             loader_train.std = None
 
-    if args.reprob > 0 and train_aug_cfg is not None:
+    print(f"{train_pp_cfg.normalize = }")
+    print(args.reprob > 0 and train_aug_cfg is not None and not train_pp_cfg.normalize)
+
+    print(loader_train.dataset.transform)
+
+    if args.reprob > 0 and train_aug_cfg is not None and not train_pp_cfg.normalize:
         random_erasing = NotNormalizedRandomErasing(probability=train_aug_cfg.re_prob,
                                                     mode=train_aug_cfg.re_mode,
-                                                    count=train_aug_cfg.re_count,
-                                                    mean=data_config['mean'],
-                                                    std=data_config['std'])
-        if isinstance(loader_train.dataset, AugMixDataset):
-            loader_train.dataset.normalize.transforms[-1] = random_erasing
+                                                    count=train_aug_cfg.re_count)
+        if normalize_in_transform:
+            if isinstance(loader_train.dataset, AugMixDataset):
+                loader_train.dataset.normalize.transforms[-1] = random_erasing
+            else:
+                loader_train.dataset.transform.transforms[-1] = random_erasing
         else:
-            loader_train.dataset.transform.transforms[-1] = random_erasing
+            loader_train.random_erasing = random_erasing
+
+    print(loader_train.dataset.transform)
 
     eval_pp_cfg = utils.MyPreprocessCfg(  # type: ignore
         input_size=data_config['input_size'],
