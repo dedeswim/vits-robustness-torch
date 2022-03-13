@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ->->->->->-> select key variables based on princeton or epfl <-<-<-<-<-<-
-cluster="pn" # switch between pn/ep
+cluster="ep" # switch between pn/ep
 
 if [ $cluster == "pn" ] 
 then
@@ -11,9 +11,9 @@ then
     SAVEDIR="${ROOT_DIR}/cifar_finetune/"
 elif [ $cluster == "ep" ] 
 then
-    DATADIR=""
-    CKPTDIR=""
-    SAVEDIR=""
+    DATADIR="~/torch_data/"
+    CKPTDIR="gs://robust-vits/xcit-adv-pretraining-3/best.pth.tar"
+    SAVEDIR="./output/tmp/"
 else
     echo "cluster not supported, terminating program!"
     exit
@@ -31,7 +31,7 @@ then
     DATASET="--dataset torch/cifar10 --num-classes 10"
     NORMALIZATION="--mean 0.4914 0.4822 0.4465 --std 0.2471 0.2435 0.2616 --normalize-model"
     ATTACK="--attack-steps 10 --attack-eps 8 --adv-training trades"
-    SETUP="--config configs/xcit-adv-finetuning.yaml --finetune ${CKPTDIR}/xcit_s_eps_8.pth.tar --output ${SAVEDIR} --sync-bn"
+    SETUP="--config configs/xcit-adv-finetuning.yaml --finetune ${CKPTDIR} --output ${SAVEDIR} --sync-bn"
     
     for wd in 0.05 0.5 1.0
     do 
