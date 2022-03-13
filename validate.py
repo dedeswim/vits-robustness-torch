@@ -350,7 +350,8 @@ def validate(args):
     model.eval()
     num_steps = len(loader)
     if args.num_examples is not None:
-        num_steps = min(num_steps, int(math.ceil(args.num_examples / args.batch_size)))
+        num_steps = min(num_steps, args.num_examples // args.batch_size)
+        print(f"Total steps: {num_steps}")
 
     with torch.no_grad():
         tracker.mark_iter()

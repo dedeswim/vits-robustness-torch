@@ -4,7 +4,8 @@ from timm.models.registry import register_model
 
 default_cfgs = {
     'cait_s12_224': cait._cfg(input_size=(3, 224, 224)),
-    'xcit_medium_12_p16_224': xcit._cfg(input_size=(3, 224, 224))
+    'xcit_medium_12_p16_224': xcit._cfg(),
+    'xcit_large_12_p16_224': xcit._cfg()
 }
 
 
@@ -28,4 +29,17 @@ def xcit_medium_12_p16_224(pretrained=False, **kwargs):
                         tokens_norm=True,
                         **kwargs)
     model = xcit._create_xcit('xcit_medium_12_p16_224', pretrained=pretrained, **model_kwargs)
+    return model
+
+
+@register_model
+def xcit_large_12_p16_224(pretrained=False, **kwargs):
+    model_kwargs = dict(patch_size=16,
+                        embed_dim=768,
+                        depth=12,
+                        num_heads=16,
+                        eta=1.0,
+                        tokens_norm=True,
+                        **kwargs)
+    model = xcit._create_xcit('xcit_large_12_p16_224', pretrained=pretrained, **model_kwargs)
     return model
