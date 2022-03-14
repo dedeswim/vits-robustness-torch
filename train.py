@@ -172,7 +172,8 @@ def main():
                                           args.attack_steps,
                                           args.attack_norm,
                                           args.attack_boundaries,
-                                          criterion=attack_criterion)
+                                          criterion=attack_criterion,
+                                          dev_env=dev_env)
     else:
         eval_attack = None
 
@@ -438,7 +439,8 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                                                  args.attack_boundaries,
                                                  criterion=attack_criterion,
                                                  num_classes=model.num_classes,
-                                                 logits_y=False)
+                                                 logits_y=False,
+                                                 dev_env=dev_env)
         compute_loss_fn = attacks.AdvTrainingLoss(train_attack, train_loss_fn, eval_mode=not dev_env.type_xla)
     elif args.adv_training is not None and args.adv_training == "trades":
         attack_criterion = nn.KLDivLoss(reduction="sum")
@@ -453,7 +455,8 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                                                  args.attack_boundaries,
                                                  criterion=attack_criterion,
                                                  num_classes=model.num_classes,
-                                                 logits_y=True)
+                                                 logits_y=True,
+                                                 dev_env=dev_env)
         compute_loss_fn = attacks.TRADESLoss(train_attack, train_loss_fn, args.trades_beta,
                                              eval_mode=not dev_env.type_xla)
     else:

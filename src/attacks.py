@@ -5,6 +5,7 @@ from typing import Callable, Dict, Optional, Tuple
 import torch
 import torch.nn.functional as F
 from autoattack import AutoAttack
+from timm.bits import DeviceEnv
 from torch import nn
 
 AttackFn = Callable[[nn.Module, torch.Tensor, torch.Tensor], torch.Tensor]
@@ -56,7 +57,8 @@ def pgd(model: nn.Module,
         num_classes: Optional[int] = None,
         random_targets: bool = False,
         logits_y: bool = False,
-        take_sign=True) -> torch.Tensor:
+        take_sign=True,
+        dev_env: Optional[DeviceEnv] = None) -> torch.Tensor:
     local_project_fn = functools.partial(project_fn, eps=eps, boundaries=boundaries)
     x_adv = init_fn(x, eps, project_fn, boundaries)
     if random_targets:
@@ -82,6 +84,10 @@ def pgd(model: nn.Module,
             x_adv = x_adv.detach() + step_size * d_x
 
         x_adv = local_project_fn(x, x_adv)
+
+        if dev_env is not None and steps > 1:
+            # Mark step here to keep XLA program size small
+            dev_env.mark_step()
 
     return x_adv
 
@@ -126,7 +132,7 @@ _SCHEDULES: Dict[str, ScheduleMaker] = {
 
 def make_train_attack(attack_name: str, schedule: str, final_eps: float, period: int, zero_eps_epochs: int,
                       step_size: float, steps: int, norm: Norm, boundaries: Tuple[float, float],
-                      criterion: nn.Module, num_classes: int, logits_y: bool) -> TrainAttackFn:
+                      criterion: nn.Module, num_classes: int, logits_y: bool, **kwargs) -> TrainAttackFn:
     if attack_name in {"ll", "soft-labels"}:
         attack_mode: Optional[str] = attack_name
         attack_name = "pgd"
@@ -155,7 +161,8 @@ def make_train_attack(attack_name: str, schedule: str, final_eps: float, period:
                          project_fn=project_fn,
                          criterion=criterion,
                          num_classes=num_classes,
-                         logits_y=logits_y)
+                         logits_y=logits_y,
+                         **kwargs)
 
     return attack
 
@@ -184,6 +191,8 @@ def make_attack(attack: str,
     if attack in {"apgd-ce"}:
         attack_kwargs["version"] = "custom"
         attack_kwargs["attacks_to_run"] = [attack]
+        if "dev_env" in attack_kwargs:
+            del attack_kwargs["dev_env"]
 
     def autoattack_fn(model: nn.Module, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         assert isinstance(eps, float)
