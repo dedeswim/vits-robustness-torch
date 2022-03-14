@@ -92,8 +92,8 @@ patience_epochs: 10
 pin_mem: false
 pretrained: false
 ratio:
-- 0.75
-- 1.3333333333333333
+- 0.95
+- 1.05
 recount: 1
 recovery_interval: 0
 remode: pixel
@@ -102,8 +102,8 @@ resplit: false
 resume: ''
 save_images: false
 scale:
-- 0.08
-- 1.0
+- 0.8
+- 1.2
 sched: cosine
 seed: 42
 smoothing: 0.0

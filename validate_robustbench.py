@@ -90,6 +90,7 @@ def main(args):
             transforms.Resize(scale_size, interpolation=transforms.InterpolationMode(interpolation)),
             transforms.CenterCrop(img_size), model)
 
+    model = nn.DataParallel(model)
     model.eval()
     model.to(device)
 

@@ -72,7 +72,7 @@ then
     
     for beta in 6 12
     do 
-        for wd in 0.05 0.5 1.0
+        for wd in 0.5 1.0
         do 
             HYPERPARAMS="--epochs 20 --color-jitter 0.0 --cutmix 0.0 --reprob 0.20 --weight-decay ${wd} --smoothing 0.0 \
                 --cooldown-epoch 2  --trades-beta ${beta}"
