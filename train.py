@@ -301,7 +301,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
             model.reset_classifier(num_classes=num_classes)
             print(f"Reset the classifier with {num_classes=}")
         except AttributeError:
-            pass
+            _logger.warn("Could not reset classifier on model")
 
         # interpolate position embedding
         # FIXME: move to a function to clean up

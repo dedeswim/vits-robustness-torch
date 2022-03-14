@@ -1,12 +1,15 @@
-from timm.models import cait, xcit
+from timm.models import cait, resnet, xcit
 from timm.models.helpers import build_model_with_cfg
 from timm.models.registry import register_model
+
+from . import wide_resnet
+from . import preact_resnet
 
 default_cfgs = {
     'cait_s12_224': cait._cfg(input_size=(3, 224, 224)),
     'xcit_medium_12_p16_224': xcit._cfg(),
     'xcit_large_12_p16_224': xcit._cfg(),
-    'xcit_small_12_p4_32': xcit._cfg(input_size=(3, 32, 32))
+    'xcit_small_12_p4_32': xcit._cfg(input_size=(3, 32, 32)),
 }
 
 
