@@ -19,7 +19,7 @@ def benchmark_model(model_name: str, input_size: Tuple[int, ...], num_classes, v
 
 if __name__ == "__main__":
     input_size = (3, 224, 224)
-    models = ["resnet18", "resnet50", "xcit_small_12_p16_224", "wide_resnet50_2"]
+    models = ["resnet18", "resnet50", "xcit_small_12_p16_224", "xcit_medium_12_p16_224", "wide_resnet50_2"]
     num_classes = 1000
     for model in models:
         benchmark_model(model, input_size, num_classes)

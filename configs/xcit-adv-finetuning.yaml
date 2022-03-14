@@ -113,7 +113,7 @@ std:
   - 0.2471
   - 0.2435
   - 0.2616
-sync_bn: true
+sync_bn: false
 torchscript: false
 trades_beta: 6.0
 train_interpolation: bicubic
