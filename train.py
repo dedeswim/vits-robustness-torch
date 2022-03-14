@@ -294,13 +294,13 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         # FIXME: probably not needed as we call `reset_classifier` below
         for k in ['head.weight', 'head.bias', 'head_dist.weight', 'head_dist.bias', 'fc.weight', 'fc.bias']:
             if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
-                print(f"Removing key {k} from pretrained checkpoint")
+                _logger.info(f"Removing key {k} from pretrained checkpoint")
                 del checkpoint_model[k]
 
         try:
             num_classes = args.num_classes
             model.reset_classifier(num_classes=num_classes)
-            print(f"Reset the classifier with {num_classes=}")
+            _logger.info(f"Reset the classifier with {num_classes=}")
         except AttributeError:
             _logger.warn("Could not reset classifier on model")
 
@@ -593,11 +593,6 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
             loader_train.mean = None
             loader_train.std = None
 
-    print(f"{train_pp_cfg.normalize = }")
-    print(args.reprob > 0 and train_aug_cfg is not None and not train_pp_cfg.normalize)
-
-    print(loader_train.dataset.transform)
-
     if args.reprob > 0 and train_aug_cfg is not None and not train_pp_cfg.normalize:
         random_erasing = NotNormalizedRandomErasing(probability=train_aug_cfg.re_prob,
                                                     mode=train_aug_cfg.re_mode,
@@ -609,8 +604,6 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
                 loader_train.dataset.transform.transforms[-1] = random_erasing
         else:
             loader_train.random_erasing = random_erasing
-
-    print(loader_train.dataset.transform)
 
     eval_pp_cfg = utils.MyPreprocessCfg(  # type: ignore
         input_size=data_config['input_size'],
