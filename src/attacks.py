@@ -215,17 +215,20 @@ class AdvTrainingLoss(nn.Module):
 
 class TRADESLoss(nn.Module):
 
-    def __init__(self, attack: TrainAttackFn, natural_criterion: nn.Module, beta: float):
+    def __init__(self, attack: TrainAttackFn, natural_criterion: nn.Module, beta: float, eval_mode: bool):
         super().__init__()
         self.attack = attack
         self.natural_criterion = natural_criterion
         self.kl_criterion = nn.KLDivLoss(reduction="sum")
         self.beta = beta
+        self.eval_mode = eval_mode
 
     def forward(self, model: nn.Module, x: torch.Tensor, y: torch.Tensor,
                 epoch: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_size = x.size(0)
-        model.eval()  # FIXME: understand why with eval the gradient
+        # Avoid setting the model in eval mode if on XLA (it crashes)
+        if self.eval_mode:
+            model.eval()  # FIXME: understand why with eval the gradient
         # of BatchNorm crashes
         output_softmax = F.softmax(model(x.detach()), dim=-1)
         x_adv = self.attack(model, x, output_softmax, epoch)
