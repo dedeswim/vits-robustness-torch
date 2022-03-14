@@ -23,7 +23,7 @@ clip_mode: norm
 color_jitter: 0.0
 cooldown_epochs: 2
 crop_pct: null
-cutmix: 1.0
+cutmix: 0.0
 cutmix_minmax: null
 data_dir: ~/torch_data
 dataset: torch/cifar10
@@ -57,7 +57,7 @@ keep_patch_embedding: true
 local_rank: 0
 log_interval: 50
 log_wandb: false
-lr: 5.0e-5
+lr: 2.0e-4
 lr_cycle_decay: 0.5
 lr_cycle_limit: 1
 lr_cycle_mul: 1.0
@@ -97,7 +97,7 @@ ratio:
 recount: 1
 recovery_interval: 0
 remode: pixel
-reprob: 0.0
+reprob: 0.20
 resplit: false
 resume: ''
 save_images: false
@@ -115,6 +115,7 @@ std:
   - 0.2616
 sync_bn: true
 torchscript: false
+trades_beta: 6.0
 train_interpolation: bicubic
 train_split: train
 tta: 0
