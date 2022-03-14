@@ -21,7 +21,7 @@ fi
 
 
 # We will control which experiments to run using SET variable.
-SET=2
+SET=1
 echo "Running set ${SET} experiments"
 
 

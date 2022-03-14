@@ -101,6 +101,7 @@ def main(args):
                                       batch_size=args.batch_size,
                                       eps=args.eps / 255,
                                       preprocessing=preprocessing,
+                                      #n_examples=256,
                                       threat_model=args.threat_model)
 
     if args.log_wandb:
