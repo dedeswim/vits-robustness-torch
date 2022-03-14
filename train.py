@@ -289,6 +289,8 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         else:
             checkpoint_model = checkpoint
         state_dict = model.state_dict()
+
+        # FIXME: probably not needed as we call `reset_classifier` below
         for k in ['head.weight', 'head.bias', 'head_dist.weight', 'head_dist.bias', 'fc.weight', 'fc.bias']:
             if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
                 print(f"Removing key {k} from pretrained checkpoint")
@@ -302,6 +304,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
             pass
 
         # interpolate position embedding
+        # FIXME: move to a function to clean up
         try:
             pos_embed_checkpoint = checkpoint_model['pos_embed']
             embedding_size = pos_embed_checkpoint.shape[-1]
@@ -335,6 +338,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         _logger.info(f"Adapting patch embedding for finetuning patch size {args.finetuning_patch_size}")
         model.patch_embed.patch_size = args.finetuning_patch_size
 
+        # FIXME use models from `models` module 
         if args.keep_patch_embedding:
             model.patch_embed.proj[0][0].stride = (1, 1)
             if args.finetuning_patch_size == 4:
@@ -342,6 +346,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
             if args.finetuning_patch_size == 2:
                 model.patch_embed.proj[4][0].stride = (1, 1)
 
+        # FIXME: remove this?
         else:
             if args.finetuning_patch_size == 4:
                 model.patch_embed.proj = model.patch_embed.proj[-3:]
