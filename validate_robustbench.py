@@ -90,6 +90,7 @@ def main(args):
             transforms.Resize(scale_size, interpolation=transforms.InterpolationMode(interpolation)),
             transforms.CenterCrop(img_size), model)
 
+    model = nn.DataParallel(model)
     model.eval()
     model.to(device)
 
@@ -100,6 +101,7 @@ def main(args):
                                       batch_size=args.batch_size,
                                       eps=args.eps / 255,
                                       preprocessing=preprocessing,
+                                      #n_examples=256,
                                       threat_model=args.threat_model)
 
     if args.log_wandb:
