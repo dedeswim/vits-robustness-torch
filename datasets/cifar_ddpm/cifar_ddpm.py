@@ -27,11 +27,11 @@ class CifarDdpm(tfds.core.GeneratorBasedBuilder):
         '1.0.0': 'Initial release.',
     }
     LEN = 15402688
-    DIRECTORY = Path("cifar_ddpm") / "cifar10_ddpm_serialized"
+    DIRECTORY = Path("cifar10_ddpm_serialized")
     IMGS_FILENAME = "cifar_ddpm_improvedddpm_sorted_images.bin"
     LABELS_FILENAME = "cifar_ddpm_improvedddpm_sorted_labels.npy"
     MANUAL_DOWNLOAD_INSTRUCTIONS = """
-    Download the data and place them in "<manual_dir>/cifar_ddpm"
+    Download the data and place them in "<manual_dir>/cifar10_ddpm_serialized"
     """
 
     def _info(self) -> tfds.core.DatasetInfo:
