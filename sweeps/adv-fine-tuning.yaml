@@ -1,0 +1,43 @@
+program: train.py
+method: grid
+metric:
+  name: eval_robust_top1
+  goal: maximize
+command:
+  - ${env}
+  - ${interpreter}
+  - launch_xla.py
+  - "--num-devices"
+  - "8"
+  - ${program}
+  - "~/torch_data/"
+  - "--dataset"
+  - "torch/cifar10"
+  - "--num-classes"
+  - "10"
+  - "--mean"
+  - " 0.4914 0.4822 0.4465"
+  - "--std"
+  - "0.2471 0.2435 0.2616"
+  - "--config"
+  - "configs/xcit-adv-finetuning.yaml"
+  - "--log-wandb"
+  - "--experiment"
+  - "xcit-adv-finetuning-tpu_cifar10_ablations_only_randErasing"
+  - ${args}
+parameters:
+  lr:
+    values:
+      - 5e-5
+      - 1e-4
+      - 5e-4
+      - 1e-3
+  weight-decay:
+    - values:
+      - 0.05
+      - 0.5
+      - 1.0
+  trades-beta:
+    - values:
+      - 6
+      - 12
