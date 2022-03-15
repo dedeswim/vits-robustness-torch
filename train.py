@@ -427,6 +427,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
     attack_step_size = args.attack_lr or (1.5 * eps / args.attack_steps)
 
     if args.adv_training is not None and args.adv_training == "pgd":
+        # FIXME: move this inside of AdvTrainingLoss constructor
         attack_criterion: nn.Module = nn.NLLLoss(reduction="sum")
         train_attack = attacks.make_train_attack(args.attack,
                                                  args.eps_schedule,
@@ -443,6 +444,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                                                  dev_env=dev_env)
         compute_loss_fn = attacks.AdvTrainingLoss(train_attack, train_loss_fn, eval_mode=not dev_env.type_xla)
     elif args.adv_training is not None and args.adv_training == "trades":
+        # FIXME: move this inside of TRADESLoss constructor
         attack_criterion = nn.KLDivLoss(reduction="sum")
         train_attack = attacks.make_train_attack(args.attack,
                                                  args.eps_schedule,

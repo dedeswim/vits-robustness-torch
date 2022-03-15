@@ -342,6 +342,8 @@ def validate(args):
         attack_kwargs = {}
         if args.attack in {"autoattack", "apgd-ce"}:
             attack_kwargs["verbose"] = args.verbose
+        else:
+            attack_kwargs["dev_env"] = dev_env
         attack = attacks.make_attack(args.attack, eps, lr, args.attack_steps, args.attack_norm,
                                      args.attack_boundaries, attack_criterion, **attack_kwargs)
     else:
