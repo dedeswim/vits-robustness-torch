@@ -28,7 +28,6 @@ from timm.models import (apply_test_time_pool, create_model, is_model, list_mode
 from timm.utils import natural_key, setup_default_logging
 from torchvision import transforms
 
-from src.adv_resnet import resnet50 as adv_resnet50, EightBN
 import src.attacks as attacks
 import src.models as models  # Import needed to register the extra models that are not in timm
 import src.utils as utils
@@ -227,35 +226,28 @@ def validate(args):
 
     dev_env = initialize_device(force_cpu=args.force_cpu, amp=args.amp)
 
-    # create model with exceptions for ResNet from ytongbai/ViTs-vs-CNNs
-    # This model must be evaluated with mean and std 0.5 and crop_pct 0.875
-    if args.model == "adv_resnet50":
-        model = adv_resnet50(norm_layer=EightBN)
-        model = utils.load_state_dict_from_gcs(model, args.checkpoint)
-    else:
-        model = create_model(args.model,
-                             pretrained=args.pretrained,
-                             num_classes=args.num_classes,
-                             in_chans=3,
-                             global_pool=args.gp,
-                             scriptable=args.torchscript)
+    model = create_model(args.model,
+                         pretrained=args.pretrained,
+                         num_classes=args.num_classes,
+                         in_chans=3,
+                         global_pool=args.gp,
+                         scriptable=args.torchscript)
 
     if args.num_classes is None:
         assert hasattr(model,
                        'num_classes'), 'Model must have `num_classes` attr if not set on cmd line/config.'
         args.num_classes = model.num_classes
 
-    if args.model != {"adv_resnet50"}:
-        if args.checkpoint.startswith('gs://'):
-            model = utils.load_model_from_gcs(args.checkpoint,
-                                              args.model,
-                                              pretrained=args.pretrained,
-                                              num_classes=args.num_classes,
-                                              in_chans=3,
-                                              global_pool=args.gp,
-                                              scriptable=args.torchscript)
-        elif args.checkpoint:
-            load_checkpoint(model, args.checkpoint, args.use_ema)
+    if args.checkpoint.startswith('gs://'):
+        model = utils.load_model_from_gcs(args.checkpoint,
+                                          args.model,
+                                          pretrained=args.pretrained,
+                                          num_classes=args.num_classes,
+                                          in_chans=3,
+                                          global_pool=args.gp,
+                                          scriptable=args.torchscript)
+    elif args.checkpoint:
+        load_checkpoint(model, args.checkpoint, args.use_ema)
 
     if args.patch_size is not None and isinstance(
             model, xcit.XCiT) and model.patch_embed.patch_size != args.patch_size:

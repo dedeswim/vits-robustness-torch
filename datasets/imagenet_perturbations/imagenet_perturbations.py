@@ -28,7 +28,7 @@ Only validation examples are computed, so use only for validating.
 _CITATION = """
 """
 
-MODELS_TO_NORMALIZE = {"adv_resnet50", "deit_small_patch16_224", "xcit_small_12_p16_224_nonrobust"}
+MODELS_TO_NORMALIZE = {"resnet50", "deit_small_patch16_224", "xcit_small_12_p16_224_nonrobust"}
 
 
 def load_model_from_gcs(checkpoint_path: str, model_name: str, **kwargs):
@@ -120,7 +120,7 @@ class ImagenetPerturbations(tfds.core.GeneratorBasedBuilder):
                                     std=constants.IMAGENET_DEFAULT_STD)
     ]
 
-    BATCH_SIZE = 256
+    BATCH_SIZE = 128
 
     def _info(self) -> tfds.core.DatasetInfo:
         """Returns the dataset metadata."""

@@ -3,15 +3,42 @@ import typing
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# from torchvision.models.utils import load_state_dict_from_url
-from functools import partial
 
-import functools
+from timm.data import IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
+from timm.models.helpers import build_model_with_cfg
+from timm.models.registry import register_model
 
-__all__ = [
-    'ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'resnext50_32x4d',
-    'resnext101_32x8d', 'wide_resnet50_2', 'wide_resnet101_2'
-]
+
+def _cfg(url='', **kwargs):
+    return {
+        'url': url,
+        'num_classes': 1000,
+        'input_size': (3, 224, 224),
+        'pool_size': None,
+        'crop_pct': 0.875,
+        'interpolation': 'bilinear',
+        'fixed_input_size': True,
+        'mean': IMAGENET_INCEPTION_MEAN,
+        'std': IMAGENET_INCEPTION_STD,
+        'first_conv': 'conv1',
+        'classifier': 'fc',
+        **kwargs
+    }
+
+
+default_cfgs = {
+    'resnet50_gelu_adv': _cfg(),
+}
+
+
+class Affine(nn.Module):
+
+    def __init__(self, width, *args, k=1, **kwargs):
+        super(Affine, self).__init__()
+        self.bnconv = nn.Conv2d(width, width, k, padding=(k - 1) // 2, groups=width, bias=True)
+
+    def forward(self, x):
+        return self.bnconv(x)
 
 
 class GhostBN2D_Old(nn.Module):
@@ -96,65 +123,6 @@ class GhostBN2D_Old(nn.Module):
                 # won't update running_mean & running_var
                 0.0,
                 self.proxy_bn.eps)
-
-
-class NoOpAttacker():
-
-    def attack(self, image, label, model):
-        return image, -torch.ones_like(label)
-
-
-class FourBN(nn.Module):
-
-    def __init__(self,
-                 num_features,
-                 *args,
-                 virtual2actual_batch_size_ratio=2,
-                 affine=False,
-                 sync_stats=False,
-                 **kwargs):
-        super(FourBN, self).__init__()
-
-        self.bn0 = GhostBN2D_Old(num_features=num_features,
-                                 *args,
-                                 virtual2actual_batch_size_ratio=virtual2actual_batch_size_ratio,
-                                 affine=affine,
-                                 sync_stats=sync_stats,
-                                 **kwargs)
-        self.bn1 = GhostBN2D_Old(num_features=num_features,
-                                 *args,
-                                 virtual2actual_batch_size_ratio=virtual2actual_batch_size_ratio,
-                                 affine=affine,
-                                 sync_stats=sync_stats,
-                                 **kwargs)
-        self.bn2 = GhostBN2D_Old(num_features=num_features,
-                                 *args,
-                                 virtual2actual_batch_size_ratio=virtual2actual_batch_size_ratio,
-                                 affine=affine,
-                                 sync_stats=sync_stats,
-                                 **kwargs)
-        self.bn3 = GhostBN2D_Old(num_features=num_features,
-                                 *args,
-                                 virtual2actual_batch_size_ratio=virtual2actual_batch_size_ratio,
-                                 affine=affine,
-                                 sync_stats=sync_stats,
-                                 **kwargs)
-
-        self.bn_type = 'bn0'
-        self.aff = Affine(width=num_features, k=1)
-
-    def forward(self, input):
-        if self.bn_type == 'bn0':
-            input = self.bn0(input)
-        elif self.bn_type == 'bn1':
-            input = self.bn1(input)
-        elif self.bn_type == 'bn2':
-            input = self.bn2(input)
-        elif self.bn_type == 'bn3':
-            input = self.bn3(input)
-
-        input = self.aff(input)
-        return input
 
 
 class EightBN(nn.Module):
@@ -249,31 +217,6 @@ def eval_use_different_stats(model, val=False):
             m.eval_use_different_stats = val
 
     model.apply(aux)
-
-
-to_clean = functools.partial(eval_use_different_stats, val=False)
-to_adv = functools.partial(eval_use_different_stats, val=True)
-
-
-def to_bn(m, status):
-    if hasattr(m, 'bn_type'):
-        m.bn_type = status
-
-
-to_0 = partial(to_bn, status='bn0')
-to_1 = partial(to_bn, status='bn1')
-to_2 = partial(to_bn, status='bn2')
-to_3 = partial(to_bn, status='bn3')
-
-
-class Affine(nn.Module):
-
-    def __init__(self, width, *args, k=1, **kwargs):
-        super(Affine, self).__init__()
-        self.bnconv = nn.Conv2d(width, width, k, padding=(k - 1) // 2, groups=width, bias=True)
-
-    def forward(self, x):
-        return self.bnconv(x)
 
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
@@ -406,11 +349,14 @@ class ResNet(nn.Module):
                  groups=1,
                  width_per_group=64,
                  replace_stride_with_dilation=None,
-                 norm_layer=None):
+                 norm_layer=None,
+                 in_chans=3,
+                 img_size=224):
         super(ResNet, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
+        self.num_classes = num_classes
 
         self.inplanes = 64
         self.dilation = 1
@@ -423,7 +369,7 @@ class ResNet(nn.Module):
                              "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
+        self.conv1 = nn.Conv2d(in_chans, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.gelu = nn.GELU()
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -444,20 +390,16 @@ class ResNet(nn.Module):
                                        stride=2,
                                        dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.n_channels = 512 * block.expansion
+        self.fc = nn.Linear(self.n_channels, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
-
-#             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-#                 nn.init.constant_(m.weight, 1)
-#                 nn.init.constant_(m.bias, 0)
-
-# Zero-initialize the last BN in each residual branch,
-# so that the residual branch starts with zeros, and each residual block behaves like an identity.
-# This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
         if zero_init_residual:
             for m in self.modules():
                 if isinstance(m, Bottleneck):
@@ -522,113 +464,17 @@ class ResNet(nn.Module):
     def forward(self, x):
         return self._forward_impl(x)
 
-
-class AdvResNet(ResNet):
-
-    def __init__(self,
-                 block,
-                 layers,
-                 num_classes=1000,
-                 zero_init_residual=False,
-                 groups=1,
-                 width_per_group=64,
-                 replace_stride_with_dilation=None,
-                 norm_layer=None,
-                 attacker=NoOpAttacker()):
-        super().__init__(block,
-                         layers,
-                         num_classes=num_classes,
-                         zero_init_residual=zero_init_residual,
-                         groups=groups,
-                         width_per_group=width_per_group,
-                         replace_stride_with_dilation=replace_stride_with_dilation,
-                         norm_layer=norm_layer)
-        self.attacker = attacker
-        self.mix = False
-        self.sing = False
-        self.mixup_fn = False
-        self.bn_num = 0
-#         self.iter = 0
-
-    def set_mixup_fn(self, mixup):
-        self.mixup_fn = mixup
-
-    def set_attacker(self, attacker):
-        self.attacker = attacker
-
-    def set_bn_num(self, bn_num):
-        self.bn_num = bn_num
-
-    def set_mix(self, mix):
-        self.mix = mix
-
-    def set_sing(self, sing):
-        self.sing = sing
-
-    def forward(self, x, labels):
-        if self.sing:
-            # Adversarial training.
-            training = self.training
-            input_len = len(x)
-            if training:
-                self.eval()
-                self.apply(to_adv)
-                if self.bn_num == 0:
-                    self.apply(to_0)
-                elif self.bn_num == 1:
-                    self.apply(to_1)
-                elif self.bn_num == 2:
-                    self.apply(to_2)
-                elif self.bn_num == 3:
-                    self.apply(to_3)
+    def reset_classifier(self, num_classes, global_pool=''):
+        self.num_classes = num_classes
+        self.fc = nn.Linear(self.n_channels, num_classes) if num_classes > 0 else nn.Identity()
 
 
-#                 elif self.bn_num == 4:
-#                     self.apply(to_4)
-#                 elif self.bn_num == 5:
-#                     self.apply(to_5)
-#                 elif self.bn_num == 6:
-#                     self.apply(to_6)
-#                 elif self.bn_num == 7:
-#                     self.apply(to_7)
-                if isinstance(self.attacker, NoOpAttacker):
-                    images = x
-                    targets = labels
-                else:
-                    aux_images, _ = self.attacker.attack(x, labels, self._forward_impl, True, True,
-                                                         self.mixup_fn)
-                    images = aux_images
-                    targets = labels
-                self.train()
-                self.apply(to_clean)
-                return self._forward_impl(images), targets
-            else:
-                self.apply(to_0)
-                if isinstance(self.attacker, NoOpAttacker):
-                    images = x
-                    targets = labels
-                else:
-                    aux_images, _ = self.attacker.attack(x, labels, self._forward_impl, True, False, False)
-                    images = aux_images
-                    targets = labels
-                return self._forward_impl(images), targets
-
-
-def _resnet(arch, block, layers, pretrained, progress, **kwargs):
-    model = ResNet(block, layers, **kwargs)
-    if pretrained:
-        raise ValueError('do not set pretrained as True, since we aim at training from scratch')
-        # state_dict = load_state_dict_from_url(model_urls[arch],
-        #                                       progress=progress)
-        # model.load_state_dict(state_dict)
+def _create_resnet(variant, pretrained=False, default_cfg=None, **kwargs):
+    model = build_model_with_cfg(ResNet, variant, pretrained, **kwargs)
     return model
 
 
-def resnet50(pretrained=False, progress=True, **kwargs):
-    r"""ResNet-50 model from
-    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-        progress (bool): If True, displays a progress bar of the download to stderr
-    """
-    return _resnet('resnet50', Bottleneck, [3, 4, 6, 3], pretrained, progress, **kwargs)
+@register_model
+def resnet50_gelu_adv(pretrained=False, **kwargs):
+    model_args = dict(block=Bottleneck, layers=[3, 4, 6, 3], norm_layer=EightBN, **kwargs)
+    return _create_resnet('resnet50_gelu_adv', pretrained, **model_args)

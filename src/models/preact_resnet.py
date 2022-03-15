@@ -35,7 +35,7 @@ class PreActBlock(nn.Module):
     expansion = 1
 
     def __init__(self, in_planes, planes, stride=1, out_shortcut=False):
-        super(PreActBlock, self).__init__()
+        super().__init__()
         self.out_shortcut = out_shortcut
         self.bn1 = nn.BatchNorm2d(in_planes)
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
@@ -60,7 +60,7 @@ class PreActBottleneck(nn.Module):
     expansion = 4
 
     def __init__(self, in_planes, planes, stride=1):
-        super(PreActBottleneck, self).__init__()
+        super().__init__()
         self.bn1 = nn.BatchNorm2d(in_planes)
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
@@ -90,12 +90,14 @@ class PreActResNet(nn.Module):
                  bn_before_fc=False,
                  out_shortcut=False,
                  in_chans=3,
-                 img_size=224):
-        super(PreActResNet, self).__init__()
+                 img_size=224,
+                 drop_rate=0.0):
+        super().__init__()
+        self.num_classes = num_classes
+
         self.in_planes = 64
         self.bn_before_fc = bn_before_fc
         self.out_shortcut = out_shortcut
-
         self.conv1 = nn.Conv2d(in_chans, 64, kernel_size=3, stride=1, padding=1, bias=False)
         self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
         self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)

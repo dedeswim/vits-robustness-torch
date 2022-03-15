@@ -4,6 +4,7 @@ from timm.models.registry import register_model
 
 from . import wide_resnet
 from . import preact_resnet
+from . import adv_resnet
 
 default_cfgs = {
     'cait_s12_224': cait._cfg(input_size=(3, 224, 224)),

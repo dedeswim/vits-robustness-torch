@@ -27,7 +27,7 @@ Only validation examples are computed, so use only for validating.
 _CITATION = """
 """
 
-MODELS_TO_NORMALIZE = {"adv_resnet50", "deit_small_patch16_224"}
+MODELS_TO_NORMALIZE = {"resnet50", "deit_small_patch16_224"}
 
 
 def load_model_from_gcs(checkpoint_path: str, model_name: str, **kwargs):
