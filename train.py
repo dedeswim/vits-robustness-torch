@@ -183,6 +183,10 @@ def main():
         for epoch in range(train_state.epoch, train_cfg.num_epochs):
             if dev_env.distributed and hasattr(loader_train.sampler, 'set_epoch'):
                 loader_train.sampler.set_epoch(epoch)
+            if dev_env.distributed and isinstance(loader_train, utils.CombinedLoaders) and hasattr(
+                    loader_train.sampler2, 'set_epoch'):
+                loader_train.sampler.set_epoch(epoch)
+
             if args.mixup_off_epoch and epoch >= args.mixup_off_epoch:
                 if loader_train.mixup_enabled:
                     loader_train.mixup_enabled = False
@@ -459,7 +463,9 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                                                  num_classes=model.num_classes,
                                                  logits_y=True,
                                                  dev_env=dev_env)
-        compute_loss_fn = attacks.TRADESLoss(train_attack, train_loss_fn, args.trades_beta,
+        compute_loss_fn = attacks.TRADESLoss(train_attack,
+                                             train_loss_fn,
+                                             args.trades_beta,
                                              eval_mode=not dev_env.type_xla)
     else:
         compute_loss_fn = utils.ComputeLossFn(train_loss_fn)
@@ -500,13 +506,31 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     data_config = resolve_data_config(vars(args), default_cfg=default_cfg, verbose=dev_env.primary)
     data_config['normalize'] = not (args.no_normalize or args.normalize_model)
 
+    if args.combine_dataset is not None:
+        train_combine_batch_size = int(args.batch_size * args.combined_dataset_ratio)
+        train_batch_size = args.batch_size - train_combine_batch_size
+    else:
+        train_combine_batch_size = 0  # This is not used in practice
+        train_batch_size = args.batch_size
+
     # create the train and eval datasets
     dataset_train = create_dataset(args.dataset,
                                    root=args.data_dir,
                                    split=args.train_split,
                                    is_training=True,
-                                   batch_size=args.batch_size,
+                                   batch_size=train_batch_size,
                                    repeats=args.epoch_repeats)
+
+    if args.combine_dataset is not None:
+        data_dir = args.combine_data_dir or args.data_dir
+        dataset_train_combine = create_dataset(args.combine_dataset,
+                                               root=data_dir,
+                                               split=args.train_split,
+                                               is_training=True,
+                                               batch_size=train_combine_batch_size,
+                                               repeats=args.epoch_repeats)
+    else:
+        dataset_train_combine = None
 
     dataset_eval = create_dataset(args.dataset,
                                   root=args.data_dir,
@@ -530,8 +554,13 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     if args.aug_splits > 1:
         if not isinstance(dataset_train, data.IterableDataset):
             dataset_train = AugMixDataset(dataset_train, num_splits=args.aug_splits)
+            if dataset_train_combine is not None:
+                dataset_train_combine = AugMixDataset(dataset_train_combine, num_splits=args.aug_splits)
         else:
             dataset_train = IterableAugMixDataset(dataset_train, num_splits=args.aug_splits)
+            if dataset_train_combine is not None:
+                dataset_train_combine = IterableAugMixDataset(dataset_train_combine,
+                                                              num_splits=args.aug_splits)
 
     # create data loaders w/ augmentation pipeline
     train_interpolation = args.train_interpolation
@@ -579,6 +608,20 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
                                     use_multi_epochs_loader=args.use_multi_epochs_loader,
                                     separate_transform=args.aug_splits > 0)
 
+    if dataset_train_combine is not None:
+        loader_train_combine = create_loader_v2(dataset_train_combine,
+                                                batch_size=args.batch_size,
+                                                is_training=True,
+                                                normalize_in_transform=normalize_in_transform,
+                                                pp_cfg=train_pp_cfg,
+                                                mix_cfg=mixup_cfg,
+                                                num_workers=args.workers,
+                                                pin_memory=args.pin_mem,
+                                                use_multi_epochs_loader=args.use_multi_epochs_loader,
+                                                separate_transform=args.aug_splits > 0)
+    else:
+        loader_train_combine = None
+
     if not train_pp_cfg.normalize:
         if normalize_in_transform:
             idx = -2 if args.reprob > 0 else -1
@@ -598,6 +641,25 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
 
             loader_train.mean = None
             loader_train.std = None
+        if loader_train_combine is not None:
+            if normalize_in_transform:
+                idx = -2 if args.reprob > 0 else -1
+                if args.aug_splits > 0:
+                    assert isinstance(loader_train_combine.dataset, AugMixDataset)
+                    assert loader_train_combine.dataset.normalize is not None
+                    loader_train_combine.dataset.normalize.transforms[idx] = transforms.ToTensor()
+                else:
+                    loader_train_combine.dataset.transform.transforms[idx] = transforms.ToTensor()
+            else:
+                if args.aug_splits > 0:
+                    assert isinstance(loader_train_combine.dataset, AugMixDataset)
+                    assert loader_train_combine.dataset.normalize is not None
+                    loader_train_combine.dataset.normalize.transforms[-1] = transforms.ToTensor()
+                else:
+                    loader_train_combine.dataset.transform.transforms[-1] = transforms.ToTensor()
+
+                loader_train_combine.mean = None
+                loader_train_combine.std = None
 
     if args.reprob > 0 and train_aug_cfg is not None and not train_pp_cfg.normalize:
         random_erasing = NotNormalizedRandomErasing(probability=train_aug_cfg.re_prob,
@@ -610,6 +672,15 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
                 loader_train.dataset.transform.transforms[-1] = random_erasing
         else:
             loader_train.random_erasing = random_erasing
+
+        if loader_train_combine is not None:
+            if normalize_in_transform:
+                if isinstance(loader_train_combine.dataset, AugMixDataset):
+                    loader_train_combine.dataset.normalize.transforms[-1] = random_erasing
+                else:
+                    loader_train_combine.dataset.transform.transforms[-1] = random_erasing
+            else:
+                loader_train_combine.random_erasing = random_erasing
 
     eval_pp_cfg = utils.MyPreprocessCfg(  # type: ignore
         input_size=data_config['input_size'],
@@ -648,6 +719,13 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
         loader_train._loader = pl.MpDeviceLoader(loader_train._loader, dev_env.device)
         loader_eval.use_mp_loader = True
         loader_eval._loader = pl.MpDeviceLoader(loader_eval._loader, dev_env.device)
+        if loader_train_combine is not None:
+            assert isinstance(loader_train_combine, fetcher.Fetcher)
+            loader_train_combine.use_mp_loader = True
+            loader_train_combine._loader = pl.MpDeviceLoader(loader_train._loader, dev_env.device)
+
+    if loader_train_combine is not None:
+        loader_train = utils.CombinedLoaders(loader_train, loader_train_combine)
 
     return data_config, loader_eval, loader_train
 

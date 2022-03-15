@@ -21,10 +21,19 @@ parser.add_argument('--dataset',
                     metavar='NAME',
                     default='',
                     help='dataset type (default: ImageFolder/ImageTar if empty)')
-parser.add_argument('--dataset-to-mix',
+parser.add_argument('--combine-dataset',
                     metavar='NAME',
                     default=None,
-                    help='Dataset to mix with the original one')
+                    help='Combine a dataset to the original one')
+parser.add_argument('--combine-data-dir',
+                    metavar='NAME',
+                    default=None,
+                    help='Directory of the dataset to combine')
+parser.add_argument('--combined-dataset-ratio',
+                    metavar='F',
+                    type=float,
+                    default=0.5,
+                    help='Ratio of the combined dataset, default is 0.5')
 parser.add_argument('--train-split',
                     metavar='NAME',
                     default='train',

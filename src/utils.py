@@ -4,13 +4,15 @@ import dataclasses
 import glob
 import os
 import tempfile
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple, Union
 
 import tensorflow as tf
 import timm
 import torch
 from timm import bits
 from timm.data import PreprocessCfg
+from timm.data.fetcher import Fetcher
+from timm.data.prefetcher_cuda import PrefetcherCuda
 from torch import nn
 
 import src.attacks as attacks
@@ -140,3 +142,44 @@ def normalize_model(model: nn.Module, mean: Tuple[float, float, float], std: Tup
     https://github.com/RobustBench/robustbench/blob/master/robustbench/model_zoo/architectures/utils_architectures.py#L20"""
     layers = OrderedDict([('normalize', ImageNormalizer(mean, std)), ('model', model)])
     return nn.Sequential(layers)
+
+
+class CombinedLoaders:
+
+    def __init__(self, loader_1: Union[Fetcher, PrefetcherCuda], loader_2: Union[Fetcher, PrefetcherCuda]):
+        self.loader_1 = loader_1
+        self.loader_2 = loader_2
+        assert loader_1.mixup_enabled == loader_2.mixup_enabled
+        self._mixup_enabled = loader_1.mixup_enabled
+
+    def __iter__(self):
+        return self._iterator()
+
+    def __len__(self):
+        return min(len(self.loader_1), len(self.loader_2))
+
+    def _iterator(self):
+        for (img1, label1), (img2, label2) in zip(self.loader_1, self.loader_2):
+            images = torch.cat([img1, img2])
+            labels = torch.cat([label1, label2])
+            indices = torch.randperm(len(images))
+            yield images[indices], labels[indices]
+
+    @property
+    def sampler(self):
+        return self.loader_1.sampler
+
+    @property
+    def sampler2(self):
+        return self.loader_2.sampler
+
+    @property
+    def mixup_enabled(self):
+        return self._mixup_enabled
+
+    @mixup_enabled.setter
+    def mixup_enabled(self):
+        self.loader_1.mixup_enabled = False
+        self.loader_2.mixup_enabled = False
+        assert self.loader_1.mixup_enabled == self.loader_2.mixup_enabled
+        self._mixup_enabled = False
