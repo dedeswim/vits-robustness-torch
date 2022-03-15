@@ -85,8 +85,9 @@ def pgd(model: nn.Module,
 
         x_adv = local_project_fn(x, x_adv)
 
-        if dev_env is not None and steps > 1:
-            # Mark step here to keep XLA program size small
+        if dev_env is not None:
+            # Mark step here to keep XLA program size small and speed-up compilation time
+            # It also seems to improve overall speed when `steps` > 1.
             dev_env.mark_step()
 
     return x_adv
@@ -133,23 +134,12 @@ _SCHEDULES: Dict[str, ScheduleMaker] = {
 def make_train_attack(attack_name: str, schedule: str, final_eps: float, period: int, zero_eps_epochs: int,
                       step_size: float, steps: int, norm: Norm, boundaries: Tuple[float, float],
                       criterion: nn.Module, num_classes: int, logits_y: bool, **kwargs) -> TrainAttackFn:
-    if attack_name in {"ll", "soft-labels"}:
-        attack_mode: Optional[str] = attack_name
-        attack_name = "pgd"
-    else:
-        attack_mode = None
     attack_fn = _ATTACKS[attack_name]
     init_fn, project_fn = _INIT_PROJECT_FN[norm]
     schedule_fn = _SCHEDULES[schedule](final_eps, period, zero_eps_epochs)
 
     def attack(model: nn.Module, x: torch.Tensor, y: torch.Tensor, step: int) -> torch.Tensor:
         eps = schedule_fn(step)
-        if attack_mode == "ll":
-            with torch.no_grad():
-                y = model(x).argmin(dim=-1)
-        elif attack_mode == "soft-labels":
-            with torch.no_grad():
-                y = model(x)
         return attack_fn(model,
                          x,
                          y,
