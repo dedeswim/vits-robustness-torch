@@ -183,9 +183,10 @@ def main():
         for epoch in range(train_state.epoch, train_cfg.num_epochs):
             if dev_env.distributed and hasattr(loader_train.sampler, 'set_epoch'):
                 loader_train.sampler.set_epoch(epoch)
+            
             if dev_env.distributed and isinstance(loader_train, utils.CombinedLoaders) and hasattr(
                     loader_train.sampler2, 'set_epoch'):
-                loader_train.sampler.set_epoch(epoch)
+                loader_train.sampler2.set_epoch(epoch)
 
             if args.mixup_off_epoch and epoch >= args.mixup_off_epoch:
                 if loader_train.mixup_enabled:
@@ -598,7 +599,7 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     normalize_in_transform = dev_env.type_xla and args.reprob > 0
 
     loader_train = create_loader_v2(dataset_train,
-                                    batch_size=args.batch_size,
+                                    batch_size=train_batch_size,
                                     is_training=True,
                                     normalize_in_transform=normalize_in_transform,
                                     pp_cfg=train_pp_cfg,
@@ -610,7 +611,7 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
 
     if dataset_train_combine is not None:
         loader_train_combine = create_loader_v2(dataset_train_combine,
-                                                batch_size=args.batch_size,
+                                                batch_size=train_combine_batch_size,
                                                 is_training=True,
                                                 normalize_in_transform=normalize_in_transform,
                                                 pp_cfg=train_pp_cfg,
