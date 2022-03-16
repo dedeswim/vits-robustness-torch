@@ -1,16 +1,15 @@
 from timm.models import cait, resnet, xcit
 from timm.models.helpers import build_model_with_cfg
 from timm.models.registry import register_model
-
-from . import wide_resnet
-from . import preact_resnet
-from . import adv_resnet
+from torch import nn
 
 default_cfgs = {
     'cait_s12_224': cait._cfg(input_size=(3, 224, 224)),
     'xcit_medium_12_p16_224': xcit._cfg(),
     'xcit_large_12_p16_224': xcit._cfg(),
     'xcit_small_12_p4_32': xcit._cfg(input_size=(3, 32, 32)),
+    'resnet18_gelu': resnet._cfg(),
+    'resnet50_gelu': resnet._cfg(interpolation='bicubic', crop_pct=0.95),
 }
 
 
@@ -104,3 +103,23 @@ def xcit_small_12_p2_32(pretrained=False, **kwargs):
     for conv_index in [0, 2, 4]:
         model.patch_embed.proj[conv_index][0].stride = (1, 1)
     return model
+
+
+@register_model
+def resnet50_gelu(pretrained=False, **kwargs):
+    """Constructs a ResNet-50 model wit GELU."""
+    model_args = dict(block=resnet.Bottleneck,
+                      layers=[3, 4, 6, 3],
+                      act_layer=lambda inplace: nn.GELU(),
+                      **kwargs)
+    return resnet._create_resnet('resnet50_gelu', pretrained, **model_args)
+
+
+@register_model
+def resnet18_gelu(pretrained=False, **kwargs):
+    """Constructs a ResNet-18 model wit GELU."""
+    model_args = dict(block=resnet.BasicBlock,
+                      layers=[2, 2, 2, 2],
+                      act_layer=lambda inplace: nn.GELU(),
+                      **kwargs)
+    return resnet._create_resnet('resnet18_gelu', pretrained, **model_args)
