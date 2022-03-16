@@ -13,8 +13,6 @@ command:
   - "gs://large-ds/tensorflow_datasets/"
   - "--dataset"
   - "tfds/image_net_subset"
-  - "--config"
-  - "configs/xcit-nano-adv-training.yaml"
   - "--model"
   - "resnet18_gelu"
   - "--log-wandb"
