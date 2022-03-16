@@ -1,4 +1,4 @@
-aa: None 
+aa: rand-m6-mstd0.5-inc1 
 adv_training: pgd
 amp: false
 attack: pgd
@@ -11,7 +11,7 @@ attack_norm: linf
 attack_steps: 1
 aug_splits: 0
 batch_size: 128
-bce_loss: false
+bce_loss: true
 bce_target_thresh: null
 bn_eps: null
 bn_momentum: null
@@ -20,10 +20,10 @@ channels_last: false
 checkpoint_hist: 10
 clip_grad: null
 clip_mode: norm
-color_jitter: 0.4
+color_jitter: 0.0
 cooldown_epochs: 10
-crop_pct: null
-cutmix: 0.0
+crop_pct: 0.95
+cutmix: 1.0
 cutmix_minmax: null
 data_dir: gs://large-ds/tensorflow_datasets
 dataset: tfds/image_net_subset
@@ -51,7 +51,7 @@ jsd_loss: false
 local_rank: 0
 log_interval: 50
 log_wandb: false
-lr: 0.0005
+lr: 0.008
 lr_cycle_decay: 0.5
 lr_cycle_limit: 1
 lr_cycle_mul: 1.0
@@ -61,7 +61,7 @@ lr_noise_pct: 0.67
 lr_noise_std: 1.0
 mean: null
 min_lr: 1.0e-05
-mixup: 0.0
+mixup: 0.1
 mixup_mode: batch
 mixup_off_epoch: 0
 mixup_prob: 1.0
@@ -74,7 +74,7 @@ no_aug: false
 no_normalize: true
 no_resume_opt: false
 num_classes: null
-opt: adamw
+opt: lamb
 opt_betas: null
 opt_eps: 1.0e-08
 output: gs://robust-vits/
@@ -96,7 +96,7 @@ scale:
 - 1.0
 sched: cosine
 seed: 42
-smoothing: 0.1
+smoothing: 0.0
 split_bn: false
 start_epoch: null
 std: null
@@ -109,7 +109,7 @@ use_multi_epochs_loader: false
 val_split: validation
 validation_batch_size: null
 vflip: 0.0
-warmup_epochs: 10
+warmup_epochs: 5
 warmup_lr: 1.0e-06
-weight_decay: 0.05
+weight_decay: 0.02
 workers: 4
