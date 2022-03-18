@@ -209,7 +209,9 @@ def main():
                                     loader_eval,
                                     services.monitor,
                                     dev_env,
-                                    attack=eval_attack)
+                                    attack=eval_attack,
+                                    log_interval=train_state.train_cfg.log_interval,
+                                    use_mp_loader=args.use_mp_loader)
 
             if train_state.model_ema is not None:
                 if dev_env.distributed and args.dist_bn in ('broadcast', 'reduce'):
@@ -221,7 +223,9 @@ def main():
                                             services.monitor,
                                             dev_env,
                                             phase_suffix='EMA',
-                                            attack=eval_attack)
+                                            attack=eval_attack,
+                                            log_interval=train_state.train_cfg.log_interval,
+                                            use_mp_loader=args.use_mp_loader)
                 eval_metrics = ema_eval_metrics
 
             if train_state.lr_scheduler is not None:
@@ -876,7 +880,8 @@ def evaluate(model: nn.Module,
              dev_env: DeviceEnv,
              phase_suffix: str = '',
              log_interval: int = 10,
-             attack: Optional[AttackFn] = None):
+             attack: Optional[AttackFn] = None,
+             use_mp_loader: bool = False):
     tracker = Tracker()
     losses_m = AvgTensor()
     # FIXME move loss and accuracy modules into task specific TaskMetric obj
@@ -906,13 +911,13 @@ def evaluate(model: nn.Module,
                 else:
                     adv_output = None
 
-            # FIXME, explictly marking step for XLA use since I'm not using the parallel xm loader
-            # need to investigate whether parallel loader wrapper is helpful on tpu-vm or
-            # only use for 2-vm setup.
-            if dev_env.type_xla:
-                dev_env.mark_step()
-            elif dev_env.type_cuda:
-                dev_env.synchronize()
+                # FIXME, explictly marking step for XLA use since I'm not using the parallel xm loader
+                # need to investigate whether parallel loader wrapper is helpful on tpu-vm or
+                # only use for 2-vm setup.
+                if dev_env.type_xla and not use_mp_loader:
+                    dev_env.mark_step()
+                elif dev_env.type_cuda:
+                    dev_env.synchronize()
 
             # FIXME uncommenting this fixes race btw model `output`/`loss` and loss_m/accuracy_m meter input
             # for PyTorch XLA GPU use.

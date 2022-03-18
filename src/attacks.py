@@ -26,12 +26,12 @@ def project_linf(x: torch.Tensor, x_adv: torch.Tensor, eps: float, boundaries: B
 
 
 def init_linf(x: torch.Tensor, eps: float, project_fn: ProjectFn, boundaries: Boundaries) -> torch.Tensor:
-    x_adv = x.detach() + torch.zeros_like(x.detach(), device=x.device).uniform_(-eps, eps) + 1e-5
+    x_adv = x.detach() + torch.empty_like(x.detach(), device=x.device).uniform_(-eps, eps) + 1e-5
     return project_fn(x, x_adv, eps, boundaries)
 
 
 def init_l2(x: torch.Tensor, eps: float, project_fn: ProjectFn, boundaries: Boundaries) -> torch.Tensor:
-    x_adv = x.detach() + torch.zeros_like(x.detach(), device=x.device).normal_(-eps, eps) + 1e-5
+    x_adv = x.detach() + torch.empty_like(x.detach(), device=x.device).normal_(-eps, eps) + 1e-5
     return project_fn(x, x_adv, eps, boundaries)
 
 
@@ -63,7 +63,7 @@ def pgd(model: nn.Module,
     x_adv = init_fn(x, eps, project_fn, boundaries)
     if random_targets:
         assert num_classes is not None
-        y = torch.randint_like(y, 0, num_classes)
+        y = torch.randint_like(y, 0, num_classes, device=y.device)
     if len(y.size()) > 1 and not logits_y:
         y = y.argmax(dim=-1)
     for _ in range(steps):
