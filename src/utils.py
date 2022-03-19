@@ -22,6 +22,7 @@ def get_outdir(path: str, *paths: str, inc=False) -> str:
     """Adapted to get out dir from GCS"""
     outdir = os.path.join(path, *paths)
     if path.startswith('gs://'):
+        check_bucket_zone(path, "robust-vits")
         os_module = tf.io.gfile
         exists_fn = lambda x: os_module.exists(x)
     else:
