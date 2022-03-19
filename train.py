@@ -183,7 +183,7 @@ def main():
         for epoch in range(train_state.epoch, train_cfg.num_epochs):
             if dev_env.distributed and hasattr(loader_train.sampler, 'set_epoch'):
                 loader_train.sampler.set_epoch(epoch)
-            
+
             if dev_env.distributed and isinstance(loader_train, utils.CombinedLoaders) and hasattr(
                     loader_train.sampler2, 'set_epoch'):
                 loader_train.sampler2.set_epoch(epoch)
@@ -508,6 +508,16 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
 
 
 def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
+    if args.data_dir.startswith("gs://"):
+        if "ZONE" not in os.environ:
+            raise ValueError(
+                "The zone is not set for this machine, set the ZONE env variable to the zone of the machine")
+        zone = os.environ['ZONE']
+        if zone == "US":
+            assert "large-ds-us" in args.data_dir, "The data dir is in the wrong zone"
+        elif zone == "EU":
+            assert args.data_dir.startswith("gs://large-ds/"), "The data dir is in the wrong zone"
+
     data_config = resolve_data_config(vars(args), default_cfg=default_cfg, verbose=dev_env.primary)
     data_config['normalize'] = not (args.no_normalize or args.normalize_model)
 
