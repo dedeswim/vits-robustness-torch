@@ -283,6 +283,9 @@ def validate(args):
     model, criterion = dev_env.to_device(model, nn.CrossEntropyLoss())
     model.to(dev_env.device)
 
+    if args.data.startswith("gs://"):
+        utils.check_bucket_zone(args.data_dit, "large-ds")
+
     dataset = create_dataset(root=args.data,
                              name=args.dataset,
                              split=args.split,
