@@ -107,7 +107,7 @@ def main():
                 str(data_config['input_size'][-1])
             ])
         if args.output.startswith("gs://"):
-            utils.check_bucket_zone(args.data_dit, "robust-vits")
+            utils.check_bucket_zone(args.data_dir, "robust-vits")
 
         output_dir = utils.get_outdir(args.output if args.output else './output/train', exp_name, inc=True)
         if output_dir.startswith("gs://"):
@@ -512,7 +512,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
 
 def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     if args.data_dir.startswith("gs://"):
-        utils.check_bucket_zone(args.data_dit, "large-ds")
+        utils.check_bucket_zone(args.data_dir, "large-ds")
 
     data_config = resolve_data_config(vars(args), default_cfg=default_cfg, verbose=dev_env.primary)
     data_config['normalize'] = not (args.no_normalize or args.normalize_model)
