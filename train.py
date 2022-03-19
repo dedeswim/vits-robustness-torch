@@ -21,7 +21,7 @@ import tempfile
 from collections import OrderedDict
 from dataclasses import replace
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import tensorflow as tf
 import timm
@@ -108,7 +108,7 @@ def main():
                 str(data_config['input_size'][-1])
             ])
 
-        output_dir = utils.get_outdir(args.output if args.output else './output/train', exp_name, inc=True)   
+        output_dir = utils.get_outdir(args.output if args.output else './output/train', exp_name, inc=True)
         if output_dir.startswith("gs://"):
             checkpoints_dir = utils.get_outdir('./output/tmp/', exp_name, inc=True)
             _logger.info(f"Temporarily saving checkpoints in {checkpoints_dir}")
@@ -193,13 +193,12 @@ def main():
             if args.mixup_off_epoch and epoch >= args.mixup_off_epoch:
                 if loader_train.mixup_enabled:
                     loader_train.mixup_enabled = False
-
-            train_metrics = train_one_epoch(
+            """train_metrics = train_one_epoch(
                 state=train_state,
                 services=services,
                 loader=loader_train,
                 dev_env=dev_env,
-            )
+            )"""
 
             if dev_env.distributed and args.dist_bn in ('broadcast', 'reduce'):
                 if dev_env.primary:
@@ -209,6 +208,7 @@ def main():
             eval_metrics = evaluate(train_state.model,
                                     train_state.eval_loss,
                                     loader_eval,
+                                    train_state,
                                     services.monitor,
                                     dev_env,
                                     attack=eval_attack,
@@ -222,6 +222,7 @@ def main():
                 ema_eval_metrics = evaluate(train_state.model_ema.module,
                                             train_state.eval_loss,
                                             loader_eval,
+                                            train_state,
                                             services.monitor,
                                             dev_env,
                                             phase_suffix='EMA',
@@ -851,7 +852,7 @@ def after_train_step(
         state = replace(state, step_count_global=state.step_count_global + 1)
         cfg = state.train_cfg
 
-        if services.monitor is not None and end_step or (step_idx + 1) % cfg.log_interval == 0:
+        if services.monitor is not None and end_step or step_idx % cfg.log_interval == 0:
             global_batch_size = dev_env.world_size * output.shape[0]
             loss_avg = loss_meter.compute()
             top1, = accuracy_meter.compute().values()
@@ -878,9 +879,44 @@ def after_train_step(
             state.lr_scheduler.step_update(num_updates=state.step_count_global)
 
 
+def after_eval_step(logger: Monitor, step_idx: int, step_end_idx: int, loss_meter: AvgTensor,
+                    accuracy_meter: AccuracyTopK, robust_accuracy_meter: AccuracyTopK,
+                    tensors: Tuple[torch.Tensor, Optional[torch.Tensor], torch.Tensor,
+                                   torch.Tensor], phase_suffix: str, log_interval: int):
+    with torch.no_grad():
+        last_step = step_idx == step_end_idx
+        output, adv_output, target, loss = tensors
+
+        loss_meter.update(loss, output.size(0))
+        accuracy_meter.update(output, target)
+
+        if adv_output is not None:
+            robust_accuracy_meter.update(adv_output, target)
+
+        if last_step or step_idx % log_interval == 0:
+            top1, top5 = accuracy_meter.compute().values()
+            if adv_output is not None:
+                robust_top1, _ = robust_accuracy_meter.compute().values()
+            else:
+                robust_top1 = None
+
+            loss_avg = loss_meter.compute()
+            logger.log_step(
+                'Eval',
+                step_idx=step_idx,
+                step_end_idx=step_end_idx,
+                loss=loss_avg.item(),
+                top1=top1.item(),
+                top5=top5.item(),
+                robust_top1=robust_top1.item() if robust_top1 is not None else None,
+                phase_suffix=phase_suffix,
+            )
+
+
 def evaluate(model: nn.Module,
              loss_fn: nn.Module,
              loader,
+             state: TrainState,
              logger: Monitor,
              dev_env: DeviceEnv,
              phase_suffix: str = '',
@@ -900,8 +936,6 @@ def evaluate(model: nn.Module,
     with torch.no_grad():
         for step_idx, (sample, target) in enumerate(loader):
             tracker.mark_iter_data_end()
-            last_step = step_idx == end_idx
-
             with dev_env.autocast():
                 output = model(sample)
                 loss = loss_fn(output, target)
@@ -930,30 +964,10 @@ def evaluate(model: nn.Module,
             # loss.item()
 
             tracker.mark_iter_step_end()
-            losses_m.update(loss, output.size(0))
-            accuracy_m.update(output, target)
+            state.updater.after_step(after_eval_step, logger, step_idx, end_idx, losses_m, accuracy_m,
+                                     robust_accuracy_m, (output, adv_output, target, loss), phase_suffix,
+                                     log_interval)
 
-            if adv_output is not None:
-                robust_accuracy_m.update(adv_output, target)
-
-            if last_step or step_idx % log_interval == 0:
-                top1, top5 = accuracy_m.compute().values()
-                if adv_output is not None:
-                    robust_top1, _ = robust_accuracy_m.compute().values()
-                else:
-                    robust_top1 = None
-
-                loss_avg = losses_m.compute()
-                logger.log_step(
-                    'Eval',
-                    step_idx=step_idx,
-                    step_end_idx=end_idx,
-                    loss=loss_avg.item(),
-                    top1=top1.item(),
-                    top5=top5.item(),
-                    robust_top1=robust_top1.item() if robust_top1 is not None else None,
-                    phase_suffix=phase_suffix,
-                )
             tracker.mark_iter()
 
     top1, top5 = accuracy_m.compute().values()
