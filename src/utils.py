@@ -70,9 +70,9 @@ def check_bucket_zone(data_dir, prefix):
             "The zone is not set for this machine, set the ZONE env variable to the zone of the machine")
     zone = os.environ['ZONE']
     if zone == "US":
-        assert data_dir.startswith(f"gs://{prefix}-us/"), "The data dir is in the wrong zone"
+        assert data_dir.startswith(f"gs://{prefix}-us/"), f"The given dir {data_dir} is in the wrong zone"
     elif zone == "EU":
-        assert data_dir.startswith(f"gs://{prefix}/"), "The data dir is in the wrong zone"
+        assert data_dir.startswith(f"gs://{prefix}/"), f"The given dir {data_dir} is in the wrong zone"
 
 
 class GCSSummaryCsv(bits.monitor.SummaryCsv):

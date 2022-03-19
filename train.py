@@ -97,6 +97,9 @@ def main():
     checkpoint_manager = None
     output_dir = None
     checkpoints_dir = None
+    if args.output.startswith("gs://"):
+        utils.check_bucket_zone(args.data_dir, "robust-vits")
+
     if dev_env.primary:
         if args.experiment:
             exp_name = args.experiment
@@ -106,8 +109,6 @@ def main():
                 safe_model_name(args.model),
                 str(data_config['input_size'][-1])
             ])
-        if args.output.startswith("gs://"):
-            utils.check_bucket_zone(args.data_dir, "robust-vits")
 
         output_dir = utils.get_outdir(args.output if args.output else './output/train', exp_name, inc=True)
         if output_dir.startswith("gs://"):
