@@ -41,7 +41,7 @@ eps_schedule_period: 10
 eval_metric: robust_top1
 experiment: xcit-adv-training-cifar10
 finetune: null
-finetuning_patch_size: null
+finetuning_patch_size: 4
 force_cpu: false
 gp: null
 hflip: 0.5
