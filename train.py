@@ -98,7 +98,7 @@ def main():
     output_dir = None
     checkpoints_dir = None
 
-    if dev_env.global_primary:
+    if dev_env.primary:
         if args.experiment:
             exp_name = args.experiment
         else:
@@ -132,9 +132,9 @@ def main():
         monitor=Monitor(output_dir=output_dir,
                         logger=_logger,
                         hparams=vars(args),
-                        output_enabled=dev_env.global_primary,
+                        output_enabled=dev_env.primary,
                         experiment_name=args.experiment,
-                        log_wandb=args.log_wandb and dev_env.global_primary),
+                        log_wandb=args.log_wandb and dev_env.primary),
         checkpoint=checkpoint_manager,  # type: ignore
     )
 
@@ -201,7 +201,7 @@ def main():
             )
 
             if dev_env.distributed and args.dist_bn in ('broadcast', 'reduce'):
-                if dev_env.global_primary:
+                if dev_env.primary:
                     _logger.info("Distributing BatchNorm running means and vars")
                 distribute_bn(train_state.model, args.dist_bn == 'reduce', dev_env)
 
@@ -251,7 +251,7 @@ def main():
     if best_metric is not None:
         _logger.info('*** Best metric: {0} (epoch {1})'.format(best_metric, best_epoch))
 
-    if dev_env.global_primary and output_dir is not None and output_dir.startswith('gs://'):
+    if dev_env.primary and output_dir is not None and output_dir.startswith('gs://'):
         assert checkpoints_dir is not None
         try:
             _logger.info(f"Uploading checkpoints to {output_dir}")
@@ -380,7 +380,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                        'num_classes'), 'Model must have `num_classes` attr if not set on cmd line/config.'
         args.num_classes = model.num_classes
 
-    if dev_env.global_primary:
+    if dev_env.primary:
         _logger.info(f'Model {safe_model_name(args.model)} created, '
                      f'param count:{sum([m.numel() for m in model.parameters()])}')
 
@@ -480,7 +480,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
 
     dev_env.to_device(train_loss_fn, eval_loss_fn, compute_loss_fn)
 
-    if dev_env.global_primary:
+    if dev_env.primary:
         _logger.info('Scheduled epochs: {}'.format(num_epochs))
 
     train_cfg = TrainCfg(
@@ -514,7 +514,7 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     if args.data_dir.startswith("gs://"):
         utils.check_bucket_zone(args.data_dir, "large-ds")
 
-    data_config = resolve_data_config(vars(args), default_cfg=default_cfg, verbose=dev_env.global_primary)
+    data_config = resolve_data_config(vars(args), default_cfg=default_cfg, verbose=dev_env.primary)
     data_config['normalize'] = not (args.no_normalize or args.normalize_model)
 
     if args.combine_dataset is not None:
