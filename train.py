@@ -98,7 +98,7 @@ def main():
     output_dir = None
     checkpoints_dir = None
 
-    if dev_env.primary:
+    if dev_env.global_primary:
         if args.experiment:
             exp_name = args.experiment
         else:
@@ -134,7 +134,7 @@ def main():
                         hparams=vars(args),
                         output_enabled=dev_env.primary,
                         experiment_name=args.experiment,
-                        log_wandb=args.log_wandb and dev_env.primary),
+                        log_wandb=args.log_wandb and dev_env.global_primary),
         checkpoint=checkpoint_manager,  # type: ignore
     )
 
@@ -251,7 +251,7 @@ def main():
     if best_metric is not None:
         _logger.info('*** Best metric: {0} (epoch {1})'.format(best_metric, best_epoch))
 
-    if dev_env.primary and output_dir is not None and output_dir.startswith('gs://'):
+    if dev_env.global_primary and output_dir is not None and output_dir.startswith('gs://'):
         assert checkpoints_dir is not None
         try:
             _logger.info(f"Uploading checkpoints to {output_dir}")
