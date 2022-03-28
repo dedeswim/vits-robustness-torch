@@ -12,25 +12,23 @@ This script was started from an early version of the PyTorch ImageNet example
 NVIDIA CUDA specific speedups adopted from NVIDIA Apex examples
 (https://github.com/NVIDIA/apex/tree/master/examples/imagenet)
 
-Hacked together by / Copyright 2020 Ross Wightman (https://github.com/rwightman)
+Hacked together by / Copyright 2020 Ross Wightman (https://github.com/rwightman), edited by
+Edoardo Debenedetti (https://github.com/dedeswim)
 """
 import logging
-import os
 import shutil
 from dataclasses import replace
-from datetime import datetime
 
-import tensorflow as tf
 import torch.nn as nn
-from timm.bits import (CheckpointManager, Monitor, TrainServices, distribute_bn, initialize_device)
-from timm.models import safe_model_name
+from timm.bits import Monitor, TrainServices, distribute_bn, initialize_device
 from timm.utils import random_seed, setup_default_logging, unwrap_model
 
 from src import (  # noqa  # Models import needed to register the extra models that are not in timm
     attacks, models, utils)
 from src.arg_parser import parse_args
 from src.engine import evaluate, train_one_epoch
-from src.setup_task import setup_data, setup_train_task
+from src.setup_task import (setup_checkpoints_output, setup_data, setup_train_task,
+                            update_state_with_norm_model)
 
 _logger = logging.getLogger('train')
 
@@ -63,17 +61,7 @@ def main():
                                                         mixup_active)
 
     if args.normalize_model:
-        train_state = replace(train_state,
-                              model=utils.normalize_model(train_state.model,
-                                                          mean=data_config["mean"],
-                                                          std=data_config["std"]))
-        train_state = replace(train_state, model=dev_env.to_device(train_state.model))
-        if train_state.model_ema is not None:
-            train_state = replace(train_state,
-                                  model_ema=utils.normalize_model(train_state.model_ema,
-                                                                  mean=data_config["mean"],
-                                                                  std=data_config["std"]))
-            train_state = replace(train_state, model_ema=dev_env.to_device(train_state.model_ema))
+        train_state = update_state_with_norm_model(dev_env, train_state, data_config)
 
     # setup checkpoint manager
     eval_metric = args.eval_metric
@@ -84,34 +72,8 @@ def main():
     checkpoints_dir = None
 
     if dev_env.global_primary:
-        if args.experiment:
-            exp_name = args.experiment
-        else:
-            exp_name = '-'.join([
-                datetime.now().strftime("%Y%m%d-%H%M%S"),
-                safe_model_name(args.model),
-                str(data_config['input_size'][-1])
-            ])
-
-        output_dir = utils.get_outdir(args.output if args.output else './output/train', exp_name, inc=True)
-        if output_dir.startswith("gs://"):
-            checkpoints_dir = utils.get_outdir('./output/tmp/', exp_name, inc=True)
-            _logger.info(f"Temporarily saving checkpoints in {checkpoints_dir}")
-        else:
-            checkpoints_dir = output_dir
-        checkpoint_manager = CheckpointManager(hparams=vars(args),
-                                               checkpoint_dir=checkpoints_dir,
-                                               recovery_dir=output_dir,
-                                               metric_name=eval_metric,
-                                               metric_decreasing=True if eval_metric == 'loss' else False,
-                                               max_history=args.checkpoint_hist)
-
-        if output_dir.startswith("gs://"):
-            with tf.io.gfile.GFile(os.path.join(output_dir, 'args.yaml'), 'w') as f:
-                f.write(args_text)
-        else:
-            with open(os.path.join(output_dir, 'args.yaml'), 'w') as f:
-                f.write(args_text)
+        checkpoint_manager, output_dir, checkpoints_dir = setup_checkpoints_output(
+            vars(args), args_text, data_config, eval_metric)
 
     services = TrainServices(
         monitor=Monitor(output_dir=output_dir,
@@ -125,24 +87,7 @@ def main():
 
     if (wandb_run := services.monitor.wandb_run) is not None:
         assert output_dir is not None
-        # Log run notes and *true* output dir to wandb
-        notes = args.run_notes
-        if output_dir.startswith("gs://"):
-            exp_dir = output_dir.split("gs://")[-1]
-            bucket_url = f"https://console.cloud.google.com/storage/{exp_dir}"
-            notes += f"Bucket: {exp_dir}\n"
-            wandb_run.config.update({"output": bucket_url}, allow_val_change=True)
-        else:
-            wandb_run.config.update({"output": output_dir}, allow_val_change=True)
-        wandb_run.notes = notes
-        wandb_run_field = f"wandb_run: {wandb_run.url}\n"  # type: ignore
-        # Log wandb run url to args file
-        if output_dir.startswith("gs://"):
-            with tf.io.gfile.GFile(os.path.join(output_dir, 'args.yaml'), 'a') as f:
-                f.write(wandb_run_field)
-        else:
-            with open(os.path.join(output_dir, 'args.yaml'), 'a') as f:
-                f.write(wandb_run_field)
+        utils.write_wandb_info(args.run_notes, output_dir, wandb_run)
 
     if output_dir is not None and output_dir.startswith('gs://'):
         services.monitor.csv_writer = utils.GCSSummaryCsv(output_dir=output_dir)

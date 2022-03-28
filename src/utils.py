@@ -1,9 +1,9 @@
-from collections import OrderedDict
 import csv
 import dataclasses
 import glob
 import os
 import tempfile
+from collections import OrderedDict
 from typing import Callable, Optional, Tuple, Union
 
 import tensorflow as tf
@@ -195,3 +195,20 @@ class CombinedLoaders:
         self.loader_2.mixup_enabled = False
         assert self.loader_1.mixup_enabled == self.loader_2.mixup_enabled
         self._mixup_enabled = False
+
+
+def write_wandb_info(notes: str, output_dir: str, wandb_run):
+    assert output_dir is not None
+    # Log run notes and *true* output dir to wandb
+    if output_dir.startswith("gs://"):
+        exp_dir = output_dir.split("gs://")[-1]
+        bucket_url = f"https://console.cloud.google.com/storage/{exp_dir}"
+        notes += f"Bucket: {exp_dir}\n"
+        wandb_run.config.update({"output": bucket_url}, allow_val_change=True)
+    else:
+        wandb_run.config.update({"output": output_dir}, allow_val_change=True)
+    wandb_run.notes = notes
+    wandb_run_field = f"wandb_run: {wandb_run.url}\n"  # type: ignore
+    # Log wandb run url to args file
+    with tf.io.gfile.GFile(os.path.join(output_dir, 'args.yaml'), 'a') as f:
+        f.write(wandb_run_field)

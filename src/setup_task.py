@@ -1,7 +1,10 @@
+from argparse import Namespace
 import logging
 import os
 import tempfile
 from dataclasses import replace
+from datetime import datetime
+from typing import Any, Dict, Tuple
 
 import tensorflow as tf
 import timm
@@ -9,7 +12,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data as data
-from timm.bits import DeviceEnv, TrainCfg, setup_model_and_optimizer
+from timm.bits import (CheckpointManager, DeviceEnv, TrainCfg, TrainState, setup_model_and_optimizer)
 from timm.data import (AugCfg, AugMixDataset, MixupCfg, create_loader_v2, fetcher, resolve_data_config)
 from timm.data.dataset_factory import create_dataset
 from timm.loss import (BinaryCrossEntropy, JsdCrossEntropy, LabelSmoothingCrossEntropy,
@@ -502,3 +505,53 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
                                                 eps_schedule=schedule)
 
     return train_state
+
+
+def update_state_with_norm_model(dev_env: DeviceEnv, train_state: TrainState,
+                                 data_config: Dict[str, Any]) -> TrainState:
+    train_state = replace(train_state,
+                          model=utils.normalize_model(train_state.model,
+                                                      mean=data_config["mean"],
+                                                      std=data_config["std"]))
+    train_state = replace(train_state, model=dev_env.to_device(train_state.model))
+    if train_state.model_ema is not None:
+        train_state = replace(train_state,
+                              model_ema=utils.normalize_model(train_state.model_ema,
+                                                              mean=data_config["mean"],
+                                                              std=data_config["std"]))
+        train_state = replace(train_state, model_ema=dev_env.to_device(train_state.model_ema))
+    return train_state
+
+
+def setup_checkpoints_output(args: Dict[str, Any], args_text: str, data_config: Dict[str, Any],
+                             eval_metric: str) -> Tuple[CheckpointManager, str, str]:
+    if args["experiment"]:
+        exp_name = args["experiment"]
+    else:
+        exp_name = '-'.join([
+            datetime.now().strftime("%Y%m%d-%H%M%S"),
+            safe_model_name(args["model"]),
+            str(data_config['input_size'][-1])
+        ])
+
+    output_dir = utils.get_outdir(args["output"] if args["output"] else './output/train', exp_name, inc=True)
+    if output_dir.startswith("gs://"):
+        checkpoints_dir = utils.get_outdir('./output/tmp/', exp_name, inc=True)
+        _logger.info(f"Temporarily saving checkpoints in {checkpoints_dir}")
+    else:
+        checkpoints_dir = output_dir
+
+    checkpoint_manager = CheckpointManager(hparams=args,
+                                           checkpoint_dir=checkpoints_dir,
+                                           recovery_dir=output_dir,
+                                           metric_name=eval_metric,
+                                           metric_decreasing=True if eval_metric == 'loss' else False,
+                                           max_history=args["checkpoint_hist"])
+
+    if output_dir.startswith("gs://"):
+        with tf.io.gfile.GFile(os.path.join(output_dir, 'args.yaml'), 'w') as f:
+            f.write(args_text)
+    else:
+        with open(os.path.join(output_dir, 'args.yaml'), 'w') as f:
+            f.write(args_text)
+    return checkpoint_manager, output_dir, checkpoints_dir
