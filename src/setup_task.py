@@ -1,3 +1,4 @@
+import logging
 import os
 import tempfile
 from dataclasses import replace
@@ -24,6 +25,8 @@ from src.random_erasing import NotNormalizedRandomErasing
 
 from . import (  # Models import needed to register the extra models that are not in timm
     attacks, utils)
+
+_logger = logging.getLogger('train')
 
 
 def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
