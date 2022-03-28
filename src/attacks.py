@@ -1,5 +1,6 @@
 import functools
 import math
+from dataclasses import dataclass
 from typing import Callable, Dict, Optional, Tuple
 
 import torch
@@ -193,12 +194,42 @@ def make_attack(attack: str,
     return autoattack_fn
 
 
+@dataclass
+class AttackCfg:
+    name: str
+    eps: float
+    eps_schedule: str
+    eps_schedule_period: int
+    zero_eps_epochs: int
+    step_size: float
+    steps: int
+    norm: str
+    boundaries: Tuple[float, float]
+
+
 class AdvTrainingLoss(nn.Module):
 
-    def __init__(self, attack: TrainAttackFn, criterion: nn.Module, eval_mode: bool = False):
+    def __init__(self,
+                 attack_cfg: AttackCfg,
+                 natural_criterion: nn.Module,
+                 dev_env: DeviceEnv,
+                 num_classes: int,
+                 eval_mode: bool = False):
         super().__init__()
-        self.attack = attack
-        self.criterion = criterion
+        self.criterion = natural_criterion
+        self.attack = make_train_attack(attack_cfg.name,
+                                        attack_cfg.eps_schedule,
+                                        attack_cfg.eps,
+                                        attack_cfg.eps_schedule_period,
+                                        attack_cfg.zero_eps_epochs,
+                                        attack_cfg.step_size,
+                                        attack_cfg.steps,
+                                        attack_cfg.norm,
+                                        attack_cfg.boundaries,
+                                        criterion=nn.NLLLoss(reduction="sum"),
+                                        num_classes=num_classes,
+                                        logits_y=False,
+                                        dev_env=dev_env)
         self.eval_mode = eval_mode
 
     def forward(self, model: nn.Module, x: torch.Tensor, y: torch.Tensor,
@@ -214,9 +245,27 @@ class AdvTrainingLoss(nn.Module):
 
 class TRADESLoss(nn.Module):
 
-    def __init__(self, attack: TrainAttackFn, natural_criterion: nn.Module, beta: float, eval_mode: bool):
+    def __init__(self,
+                 attack_cfg: AttackCfg,
+                 natural_criterion: nn.Module,
+                 beta: float,
+                 dev_env: DeviceEnv,
+                 num_classes: int,
+                 eval_mode: bool = False):
         super().__init__()
-        self.attack = attack
+        self.attack = make_train_attack(attack_cfg.name,
+                                        attack_cfg.eps_schedule,
+                                        attack_cfg.eps,
+                                        attack_cfg.eps_schedule_period,
+                                        attack_cfg.zero_eps_epochs,
+                                        attack_cfg.step_size,
+                                        attack_cfg.steps,
+                                        attack_cfg.norm,
+                                        attack_cfg.boundaries,
+                                        criterion=nn.KLDivLoss(reduction="sum"),
+                                        num_classes=num_classes,
+                                        logits_y=True,
+                                        dev_env=dev_env)
         self.natural_criterion = natural_criterion
         self.kl_criterion = nn.KLDivLoss(reduction="sum")
         self.beta = beta

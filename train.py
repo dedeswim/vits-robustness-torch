@@ -27,7 +27,7 @@ from src import (  # noqa  # Models import needed to register the extra models t
     attacks, models, utils)
 from src.arg_parser import parse_args
 from src.engine import evaluate, train_one_epoch
-from src.setup_task import (setup_checkpoints_output, setup_data, setup_train_task,
+from src.setup_task import (resolve_attack_cfg, setup_checkpoints_output, setup_data, setup_train_task,
                             update_state_with_norm_model)
 
 _logger = logging.getLogger('train')
@@ -93,17 +93,15 @@ def main():
         services.monitor.csv_writer = utils.GCSSummaryCsv(output_dir=output_dir)
 
     if args.adv_training is not None:
+        eval_attack_cfg = resolve_attack_cfg(args, eval=True)
         attack_criterion = nn.NLLLoss(reduction="sum")
         dev_env.to_device(attack_criterion)
-        eval_attack_name = args.attack.split("targeted_")[-1]
-        eps = (args.eval_attack_eps or args.attack_eps) / 255
-        attack_step_size = args.attack_lr or (1.5 * eps / args.attack_steps)
-        eval_attack = attacks.make_attack(eval_attack_name,
-                                          eps,
-                                          attack_step_size,
-                                          args.attack_steps,
-                                          args.attack_norm,
-                                          args.attack_boundaries,
+        eval_attack = attacks.make_attack(eval_attack_cfg.name,
+                                          eval_attack_cfg.eps,
+                                          eval_attack_cfg.step_size,
+                                          eval_attack_cfg.steps,
+                                          eval_attack_cfg.norm,
+                                          eval_attack_cfg.boundaries,
                                           criterion=attack_criterion,
                                           dev_env=dev_env)
     else:

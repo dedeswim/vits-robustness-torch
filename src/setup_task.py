@@ -1,4 +1,3 @@
-from argparse import Namespace
 import logging
 import os
 import tempfile
@@ -7,13 +6,11 @@ from datetime import datetime
 from typing import Any, Dict, Tuple
 
 import tensorflow as tf
-import timm
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.utils.data as data
-from timm.bits import (CheckpointManager, DeviceEnv, TrainCfg, TrainState, setup_model_and_optimizer)
-from timm.data import (AugCfg, AugMixDataset, MixupCfg, create_loader_v2, fetcher, resolve_data_config)
+from timm.bits import CheckpointManager, DeviceEnv, TrainCfg, TrainState, setup_model_and_optimizer
+from timm.data import AugCfg, AugMixDataset, MixupCfg, create_loader_v2, fetcher, resolve_data_config
 from timm.data.dataset_factory import create_dataset
 from timm.loss import (BinaryCrossEntropy, JsdCrossEntropy, LabelSmoothingCrossEntropy,
                        SoftTargetCrossEntropy)
@@ -22,7 +19,7 @@ from timm.optim import optimizer_kwargs
 from timm.scheduler import create_scheduler
 from torchvision import transforms
 
-from src.attacks import _SCHEDULES
+from src.attacks import _SCHEDULES, AttackCfg
 from src.iterable_augmix_dataset import IterableAugMixDataset
 from src.random_erasing import NotNormalizedRandomErasing
 
@@ -317,60 +314,12 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         # interpolate position embedding
         # FIXME: move to a function to clean up
         try:
-            pos_embed_checkpoint = checkpoint_model['pos_embed']
-            embedding_size = pos_embed_checkpoint.shape[-1]
-            num_patches = model.patch_embed.num_patches
-            num_extra_tokens = model.pos_embed.shape[-2] - num_patches
-            # height (== width) for the checkpoint position embedding
-            orig_size = int((pos_embed_checkpoint.shape[-2] - num_extra_tokens)**0.5)
-            # height (== width) for the new position embedding
-            new_size = int(num_patches**0.5)
-            # class_token and dist_token are kept unchanged
-            extra_tokens = pos_embed_checkpoint[:, :num_extra_tokens]
-            # only the position tokens are interpolated
-            pos_tokens = pos_embed_checkpoint[:, num_extra_tokens:]
-            pos_tokens = pos_tokens.reshape(-1, orig_size, orig_size, embedding_size).permute(0, 3, 1, 2)
-            pos_tokens = F.interpolate(pos_tokens,
-                                       size=(new_size, new_size),
-                                       mode='bicubic',
-                                       align_corners=False)
-            pos_tokens = pos_tokens.permute(0, 2, 3, 1).flatten(1, 2)
-            new_pos_embed = torch.cat((extra_tokens, pos_tokens), dim=1)
-            checkpoint_model['pos_embed'] = new_pos_embed
+            checkpoint_model['pos_embed'] = utils.interpolate_position_embeddings(model, checkpoint_model)
         except KeyError:
             # Model has no learned positional embeddings, skipping interpolation
             pass
 
         model.load_state_dict(checkpoint_model, strict=False)
-
-    if args.finetuning_patch_size is not None:
-        assert args.finetuning_patch_size in {2, 4, 8}, "Finetuning patch size can be only 4, 8 or `None`"
-        assert isinstance(model, timm.models.xcit.XCiT), "Finetuning patch size is only supported for XCiT"
-        _logger.info(f"Adapting patch embedding for finetuning patch size {args.finetuning_patch_size}")
-        model.patch_embed.patch_size = args.finetuning_patch_size
-
-        # FIXME use models from `models` module
-        if args.keep_patch_embedding:
-            model.patch_embed.proj[0][0].stride = (1, 1)
-            if args.finetuning_patch_size == 4:
-                model.patch_embed.proj[2][0].stride = (1, 1)
-            if args.finetuning_patch_size == 2:
-                model.patch_embed.proj[4][0].stride = (1, 1)
-
-        # FIXME: remove this?
-        else:
-            if args.finetuning_patch_size == 4:
-                model.patch_embed.proj = model.patch_embed.proj[-3:]
-                model.patch_embed.proj[0] = timm.models.xcit.conv3x3(3, model.embed_dim // 2, 2)
-
-            elif args.finetuning_patch_size == 8:
-                if args.reinit_patch_embedding:
-                    _logger.info("Re-initializing patch embedding")
-                    model.patch_embed = timm.models.xcit.ConvPatchEmbed(args.input_size[-1], 8, 3,
-                                                                        model.embed_dim)
-                else:
-                    model.patch_embed.proj = model.patch_embed.proj[-5:]
-                    model.patch_embed.proj[0] = timm.models.xcit.conv3x3(3, model.embed_dim // 4, 2)
 
     if args.num_classes is None:
         assert hasattr(model,
@@ -432,46 +381,23 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         train_loss_fn = nn.CrossEntropyLoss()
     eval_loss_fn = nn.CrossEntropyLoss()
 
-    eps = args.attack_eps / 255
-    attack_step_size = args.attack_lr or (1.5 * eps / args.attack_steps)
-
-    if args.adv_training is not None and args.adv_training == "pgd":
-        # FIXME: move this inside of AdvTrainingLoss constructor
-        attack_criterion: nn.Module = nn.NLLLoss(reduction="sum")
-        train_attack = attacks.make_train_attack(args.attack,
-                                                 args.eps_schedule,
-                                                 eps,
-                                                 args.eps_schedule_period,
-                                                 args.zero_eps_epochs,
-                                                 attack_step_size,
-                                                 args.attack_steps,
-                                                 args.attack_norm,
-                                                 args.attack_boundaries,
-                                                 criterion=attack_criterion,
-                                                 num_classes=model.num_classes,
-                                                 logits_y=False,
-                                                 dev_env=dev_env)
-        compute_loss_fn = attacks.AdvTrainingLoss(train_attack, train_loss_fn, eval_mode=not dev_env.type_xla)
-    elif args.adv_training is not None and args.adv_training == "trades":
-        # FIXME: move this inside of TRADESLoss constructor
-        attack_criterion = nn.KLDivLoss(reduction="sum")
-        train_attack = attacks.make_train_attack(args.attack,
-                                                 args.eps_schedule,
-                                                 eps,
-                                                 args.eps_schedule_period,
-                                                 args.zero_eps_epochs,
-                                                 attack_step_size,
-                                                 args.attack_steps,
-                                                 args.attack_norm,
-                                                 args.attack_boundaries,
-                                                 criterion=attack_criterion,
-                                                 num_classes=model.num_classes,
-                                                 logits_y=True,
-                                                 dev_env=dev_env)
-        compute_loss_fn = attacks.TRADESLoss(train_attack,
-                                             train_loss_fn,
-                                             args.trades_beta,
-                                             eval_mode=not dev_env.type_xla)
+    if args.adv_training is not None:
+        attack_cfg = resolve_attack_cfg(args)
+        if args.adv_training == "pgd":
+            compute_loss_fn = attacks.AdvTrainingLoss(attack_cfg,
+                                                      train_loss_fn,
+                                                      dev_env,
+                                                      model.num_classes,
+                                                      eval_mode=not dev_env.type_xla)
+        elif args.adv_training == "trades":
+            compute_loss_fn = attacks.TRADESLoss(attack_cfg,
+                                                 train_loss_fn,
+                                                 args.trades_beta,
+                                                 dev_env,
+                                                 model.num_classes,
+                                                 eval_mode=not dev_env.type_xla)
+        else:
+            raise ValueError("Adversarial training mode not supported")
     else:
         compute_loss_fn = utils.ComputeLossFn(train_loss_fn)
 
@@ -508,7 +434,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
 
 
 def update_state_with_norm_model(dev_env: DeviceEnv, train_state: TrainState,
-                                 data_config: Dict[str, Any]) -> TrainState:
+                                 data_config: Dict[str, Any]) -> utils.AdvTrainState:
     train_state = replace(train_state,
                           model=utils.normalize_model(train_state.model,
                                                       mean=data_config["mean"],
@@ -555,3 +481,24 @@ def setup_checkpoints_output(args: Dict[str, Any], args_text: str, data_config: 
         with open(os.path.join(output_dir, 'args.yaml'), 'w') as f:
             f.write(args_text)
     return checkpoint_manager, output_dir, checkpoints_dir
+
+
+def resolve_attack_cfg(args, eval=False) -> AttackCfg:
+    if eval:
+        # Make train targeted attack untargeted
+        name = args.attack.split("targeted_")[-1]
+        eps = (args.eval_attack_eps or args.attack_eps) / 255
+    else:
+        name = args.attack
+        eps = args.attack_eps / 255
+    step_size = args.attack_lr or (1.5 * eps / args.attack_steps)
+
+    return AttackCfg(name=name,
+                     eps=eps,
+                     eps_schedule=args.eps_schedule,
+                     eps_schedule_period=args.eps_schedule_period,
+                     zero_eps_epochs=args.zero_eps_epochs,
+                     step_size=step_size,
+                     steps=args.attack_steps,
+                     norm=args.attack_norm,
+                     boundaries=args.attack_boundaries)
