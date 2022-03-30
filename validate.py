@@ -284,7 +284,7 @@ def validate(args):
     model.to(dev_env.device)
 
     if args.data.startswith("gs://"):
-        utils.check_bucket_zone(args.data_dit, "large-ds")
+        utils.check_bucket_zone(args.data, "large-ds")
 
     dataset = create_dataset(root=args.data,
                              name=args.dataset,
