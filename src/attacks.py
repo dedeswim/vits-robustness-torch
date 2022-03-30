@@ -244,7 +244,7 @@ class AdvTrainingLoss(nn.Module):
 
 
 class TRADESLoss(nn.Module):
-
+    """Adapted from https://github.com/yaodongyu/TRADES/blob/master/trades.py#L17"""
     def __init__(self,
                  attack_cfg: AttackCfg,
                  natural_criterion: nn.Module,
