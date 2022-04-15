@@ -40,28 +40,26 @@ def xcit_medium_12_p16_224(pretrained=False, **kwargs):
 
 @register_model
 def xcit_large_12_p16_224(pretrained=False, **kwargs):
-    model_kwargs = dict(
-        patch_size=16,
-        embed_dim=768,
-        depth=12,
-        num_heads=16,
-        eta=1.0,
-        tokens_norm=True,
-        **kwargs)
+    model_kwargs = dict(patch_size=16,
+                        embed_dim=768,
+                        depth=12,
+                        num_heads=16,
+                        eta=1.0,
+                        tokens_norm=True,
+                        **kwargs)
     model = xcit._create_xcit('xcit_large_12_p16_224', pretrained=pretrained, **model_kwargs)
     return model
 
 
 @register_model
 def xcit_large_12_h8_p16_224(pretrained=False, **kwargs):
-    model_kwargs = dict(
-        patch_size=16,
-        embed_dim=768,
-        depth=12,
-        num_heads=8,
-        eta=1.0,
-        tokens_norm=True,
-        **kwargs)
+    model_kwargs = dict(patch_size=16,
+                        embed_dim=768,
+                        depth=12,
+                        num_heads=8,
+                        eta=1.0,
+                        tokens_norm=True,
+                        **kwargs)
     model = xcit._create_xcit('xcit_large_12_h8_p16_224', pretrained=pretrained, **model_kwargs)
     return model
 
@@ -143,7 +141,11 @@ def resnet18_gelu(pretrained=False, **kwargs):
 
 @register_model
 def resnext152_32x8d(pretrained=False, **kwargs):
-    """Constructs a ResNeXt152-32x8d model.
-    """
-    model_args = dict(block=resnet.Bottleneck, layers=[3, 4, 36, 3], cardinality=32, base_width=8, **kwargs)
+    """Constructs a ResNeXt152-32x8d model. Added to compare to https://arxiv.org/abs/2006.14536"""
+    model_args = dict(block=resnet.Bottleneck,
+                      layers=[3, 4, 36, 3],
+                      cardinality=32,
+                      base_width=8,
+                      act_layer=nn.SiLU,
+                      **kwargs)
     return resnet._create_resnet('resnext152_32x8d', pretrained, **model_args)

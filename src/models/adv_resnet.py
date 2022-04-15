@@ -351,7 +351,8 @@ class ResNet(nn.Module):
                  replace_stride_with_dilation=None,
                  norm_layer=None,
                  in_chans=3,
-                 img_size=224):
+                 img_size=224,
+                 drop_rate=0.0):
         super(ResNet, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
