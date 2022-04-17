@@ -14,6 +14,7 @@ from timm import bits
 from timm.data import PreprocessCfg
 from timm.data.fetcher import Fetcher
 from timm.data.prefetcher_cuda import PrefetcherCuda
+from timm.models import xcit
 from torch import nn
 
 import src.attacks as attacks
@@ -79,7 +80,6 @@ def check_bucket_zone(data_dir, prefix):
 
 class GCSSummaryCsv(bits.monitor.SummaryCsv):
     """SummaryCSV version to work with GCS"""
-
     def __init__(self, output_dir, filename='summary.csv'):
         super().__init__(output_dir, filename)
 
@@ -93,7 +93,6 @@ class GCSSummaryCsv(bits.monitor.SummaryCsv):
 
 
 class ComputeLossFn(nn.Module):
-
     def __init__(self, loss_fn: nn.Module):
         super().__init__()
         self.loss_fn = loss_fn
@@ -138,7 +137,6 @@ class MyPreprocessCfg(PreprocessCfg):
 class ImageNormalizer(nn.Module):
     """From
     https://github.com/RobustBench/robustbench/blob/master/robustbench/model_zoo/architectures/utils_architectures.py#L8"""
-
     def __init__(self, mean: Tuple[float, float, float], std: Tuple[float, float, float]) -> None:
         super(ImageNormalizer, self).__init__()
 
@@ -158,7 +156,6 @@ def normalize_model(model: nn.Module, mean: Tuple[float, float, float], std: Tup
 
 
 class CombinedLoaders:
-
     def __init__(self, loader_1: Union[Fetcher, PrefetcherCuda], loader_2: Union[Fetcher, PrefetcherCuda]):
         self.loader_1 = loader_1
         self.loader_2 = loader_2
@@ -233,3 +230,14 @@ def interpolate_position_embeddings(model: nn.Module, checkpoint_model: Dict[str
     pos_tokens = pos_tokens.permute(0, 2, 3, 1).flatten(1, 2)
     new_pos_embed = torch.cat((extra_tokens, pos_tokens), dim=1)
     return new_pos_embed
+
+
+def adapt_model_patches(model: xcit.XCiT, new_patch_size: int):
+    to_divide = model.patch_embed.patch_size / new_patch_size
+    assert int(to_divide) == to_divide, "The new patch size should divide the original patch size"
+    to_divide = int(to_divide)
+    assert to_divide % 2 == 0, "The ratio between the original patch size and the new patch size should be divisible by 2"
+    for conv_index in range(0, to_divide, 2):
+        model.patch_embed.proj[conv_index][0].stride = (1, 1)
+    model.patch_embed.patch_size = new_patch_size
+    return model

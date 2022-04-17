@@ -546,7 +546,7 @@ parser.add_argument('--use-mp-loader',
                     help='Uses torch_xla\'s MP loader')
 
 
-def parse_args():
+def parse_args(additional_args=None):
     # Do we have a config file to parse?
     args_config, remaining = config_parser.parse_known_args()
     if args_config.config:
@@ -555,9 +555,10 @@ def parse_args():
             parser.set_defaults(**cfg)
 
     # The main arg parser parses the rest of the args, the usual
-    # defaults will have been overridden if config file specified.
+    # defaults will have been overridden if config file specified.    
+    if additional_args is not None:
+        remaining += additional_args
     args = parser.parse_args(remaining)
-
     # Cache the args as a text string to save them in the output dir later
     args_text = yaml.safe_dump(args.__dict__, default_flow_style=False)
     return args, args_text

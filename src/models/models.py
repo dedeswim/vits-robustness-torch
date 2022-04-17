@@ -3,6 +3,8 @@ from timm.models.helpers import build_model_with_cfg
 from timm.models.registry import register_model
 from torch import nn
 
+from src import utils
+
 default_cfgs = {
     'cait_s12_224': cait._cfg(input_size=(3, 224, 224)),
     'xcit_medium_12_p16_224': xcit._cfg(),
@@ -10,6 +12,7 @@ default_cfgs = {
     'xcit_large_12_h8_p16_224': xcit._cfg(),
     'xcit_small_12_p4_32': xcit._cfg(input_size=(3, 32, 32)),
     'xcit_medium_12_p4_32': xcit._cfg(input_size=(3, 32, 32)),
+    'xcit_large_12_p4_32': xcit._cfg(input_size=(3, 32, 32)),
     'resnet18_gelu': resnet._cfg(),
     'resnet50_gelu': resnet._cfg(interpolation='bicubic', crop_pct=0.95),
     'resnext152_32x8d': resnet._cfg(input_size=(3, 380, 380))
@@ -77,9 +80,7 @@ def xcit_small_12_p8_32(pretrained=False, **kwargs):
         **kwargs)
     model = xcit._create_xcit('xcit_small_12_p4_32', pretrained=pretrained, **model_kwargs)
     assert isinstance(model, xcit.XCiT)
-    # Adapt ConvPatchEmbed module
-    model.patch_embed.patch_size = 8
-    model.patch_embed.proj[0][0].stride = (1, 1)
+    model = utils.adapt_model_patches(model, 8)
     return model
 
 
@@ -95,10 +96,7 @@ def xcit_small_12_p4_32(pretrained=False, **kwargs):
         **kwargs)
     model = xcit._create_xcit('xcit_small_12_p4_32', pretrained=pretrained, **model_kwargs)
     assert isinstance(model, xcit.XCiT)
-    # Adapt ConvPatchEmbed module
-    model.patch_embed.patch_size = 4
-    for conv_index in [0, 2]:
-        model.patch_embed.proj[conv_index][0].stride = (1, 1)
+    model = utils.adapt_model_patches(model, 4)
     return model
 
 
@@ -114,10 +112,22 @@ def xcit_medium_12_p4_32(pretrained=False, **kwargs):
     model = xcit._create_xcit('xcit_medium_12_p4_32', pretrained=pretrained, **model_kwargs)
     # TODO: make this a function
     assert isinstance(model, xcit.XCiT)
-    # Adapt ConvPatchEmbed module
-    model.patch_embed.patch_size = 4
-    for conv_index in [0, 2]:
-        model.patch_embed.proj[conv_index][0].stride = (1, 1)
+    model = utils.adapt_model_patches(model, 4)
+    return model
+
+
+@register_model
+def xcit_large_12_p4_32(pretrained=False, **kwargs):
+    model_kwargs = dict(patch_size=16,
+                        embed_dim=768,
+                        depth=12,
+                        num_heads=16,
+                        eta=1.0,
+                        tokens_norm=True,
+                        **kwargs)
+    model = xcit._create_xcit('xcit_large_12_p16_224', pretrained=pretrained, **model_kwargs)
+    assert isinstance(model, xcit.XCiT)
+    model = utils.adapt_model_patches(model, 4)
     return model
 
 
@@ -132,10 +142,7 @@ def xcit_small_12_p2_32(pretrained=False, **kwargs):
                         **kwargs)
     model = xcit._create_xcit('xcit_small_12_p2_32', pretrained=pretrained, **model_kwargs)
     assert isinstance(model, xcit.XCiT)
-    # Adapt ConvPatchEmbed module
-    model.patch_embed.patch_size = 2
-    for conv_index in [0, 2, 4]:
-        model.patch_embed.proj[conv_index][0].stride = (1, 1)
+    model = utils.adapt_model_patches(model, 2)
     return model
 
 
