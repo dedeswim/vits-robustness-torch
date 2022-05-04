@@ -24,7 +24,6 @@ def get_outdir(path: str, *paths: str, inc=False) -> str:
     """Adapted to get out dir from GCS"""
     outdir = os.path.join(path, *paths)
     if path.startswith('gs://'):
-        check_bucket_zone(path, "robust-vits")
         os_module = tf.io.gfile
         exists_fn = lambda x: os_module.exists(x)
     else:
@@ -65,17 +64,6 @@ def upload_checkpoints_gcs(checkpoints_dir: str, output_dir: str):
     for checkpoint in checkpoints_paths:
         gcs_checkpoint_path = os.path.join(output_dir, os.path.basename(checkpoint))
         tf.io.gfile.copy(checkpoint, gcs_checkpoint_path)
-
-
-def check_bucket_zone(data_dir, prefix):
-    if "ZONE" not in os.environ:
-        raise ValueError(
-            "The zone is not set for this machine, set the ZONE env variable to the zone of the machine")
-    zone = os.environ['ZONE']
-    if zone == "US":
-        assert data_dir.startswith(f"gs://{prefix}-us/"), f"The given dir {data_dir} is in the wrong zone"
-    elif zone == "EU":
-        assert data_dir.startswith(f"gs://{prefix}/"), f"The given dir {data_dir} is in the wrong zone"
 
 
 class GCSSummaryCsv(bits.monitor.SummaryCsv):

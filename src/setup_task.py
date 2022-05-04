@@ -31,9 +31,6 @@ _logger = logging.getLogger('train')
 
 
 def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
-    if args.data_dir.startswith("gs://"):
-        utils.check_bucket_zone(args.data_dir, "large-ds")
-
     data_config = resolve_data_config(vars(args), default_cfg=default_cfg, verbose=dev_env.primary)
     data_config['normalize'] = not (args.no_normalize or args.normalize_model)
 

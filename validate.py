@@ -283,9 +283,6 @@ def validate(args):
     model, criterion = dev_env.to_device(model, nn.CrossEntropyLoss())
     model.to(dev_env.device)
 
-    if args.data.startswith("gs://"):
-        utils.check_bucket_zone(args.data, "large-ds")
-
     dataset = create_dataset(root=args.data,
                              name=args.dataset,
                              split=args.split,
@@ -327,6 +324,7 @@ def validate(args):
     logger = Monitor(logger=_logger)
     tracker = Tracker()
     losses = AvgTensor()
+    adv_losses = AvgTensor()
     accuracy = AccuracyTopK(dev_env=dev_env)
     adv_accuracy = AccuracyTopK(dev_env=dev_env)
 
@@ -370,6 +368,10 @@ def validate(args):
             if valid_labels is not None:
                 output = output[:, valid_labels]
             loss = criterion(output, target)
+            if adv_output is not None:
+                adv_loss = criterion(adv_output, target)
+            else:
+                adv_loss = None
 
             if dev_env.type_xla:
                 dev_env.mark_step()
@@ -383,12 +385,16 @@ def validate(args):
             accuracy.update(output.detach(), target)
             if adv_output is not None:
                 adv_accuracy.update(adv_output.detach(), target)
+            if adv_losses is not None:
+                adv_losses.update(adv_loss.detach(), sample.size(0))
 
             tracker.mark_iter()
             if last_step or step_idx % args.log_freq == 0:
                 top1, top5 = accuracy.compute().values()
                 robust_top1, robust_top5 = adv_accuracy.compute().values()
                 loss_avg = losses.compute()
+                adv_loss_avg = adv_losses.compute()
+
                 logger.log_step(
                     phase='eval',
                     step_idx=step_idx,
@@ -398,6 +404,7 @@ def validate(args):
                     loss=loss_avg.item(),
                     top1=top1.item(),
                     top5=top5.item(),
+                    adv_loss=adv_loss_avg.item(),
                     robust_top1=robust_top1.item(),
                     robust_top5=robust_top5.item(),
                 )
