@@ -28,7 +28,7 @@ Only validation examples are computed, so use only for validating.
 _CITATION = """
 """
 
-MODELS_TO_NORMALIZE = {"resnet50", "deit_small_patch16_224", "xcit_small_12_p16_224_nonrobust"}
+MODELS_TO_NORMALIZE = {"resnet50_nonrobust", "resnet50", "resnet50_fgsm", "xcit_small_12_p16_224_nonrobust"}
 
 
 def load_model_from_gcs(checkpoint_path: str, model_name: str, **kwargs):
@@ -106,10 +106,15 @@ class ImagenetPerturbations(tfds.core.GeneratorBasedBuilder):
                                     checkpoint_path="gs://robust-vits/xcit/best.pth.tar",
                                     steps=1),
         ImagenetPerturbationsConfig(name="resnet50",
-                                    model="resnet50",
+                                    model="adv_resnet50",
                                     checkpoint_path="gs://robust-vits/external-checkpoints/advres50_gelu.pth",
                                     mean=(0.5, 0.5, 0.5),
                                     std=(0.5, 0.5, 0.5)),
+        ImagenetPerturbationsConfig(name="resnet50_nonrobust",
+                                    model="resnet50",
+                                    pretrained=True,
+                                    mean=constants.IMAGENET_DEFAULT_MEAN,
+                                    std=constants.IMAGENET_DEFAULT_STD),
         ImagenetPerturbationsConfig(name="xcit_small_12_p16_224",
                                     model="xcit_small_12_p16_224",
                                     checkpoint_path="gs://robust-vits/xcit/best.pth.tar"),
@@ -144,7 +149,7 @@ class ImagenetPerturbations(tfds.core.GeneratorBasedBuilder):
         """Returns SplitGenerators."""
         dev_env = initialize_device()
 
-        if self.builder_config.model == "resnet50":
+        if self.builder_config.name in {"adv_resnet50", "adv_resnet50_fgsm"}:
             model = load_state_dict_from_gcs(resnet50(norm_layer=EightBN),
                                              self.builder_config.checkpoint_path)
         elif self.builder_config.checkpoint_path:
@@ -155,7 +160,7 @@ class ImagenetPerturbations(tfds.core.GeneratorBasedBuilder):
             raise ValueError(f"For {self.builder_config.name}, either the checkpoint"
                              "should be specified, or pretrained should be `True`")
 
-        if self.builder_config.model in MODELS_TO_NORMALIZE:
+        if self.builder_config.name in MODELS_TO_NORMALIZE:
             model = normalize_model(model, self.builder_config.mean, self.builder_config.std)
 
         model.to(dev_env.device)
