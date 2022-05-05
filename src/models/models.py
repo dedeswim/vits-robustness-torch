@@ -15,6 +15,7 @@ default_cfgs = {
     'xcit_large_12_p4_32': xcit._cfg(input_size=(3, 32, 32)),
     'resnet18_gelu': resnet._cfg(),
     'resnet50_gelu': resnet._cfg(interpolation='bicubic', crop_pct=0.95),
+    'resnet152_gelu': resnet._cfg(interpolation='bicubic', crop_pct=0.95),
     'resnext152_32x8d': resnet._cfg(input_size=(3, 380, 380))
 }
 
@@ -147,8 +148,19 @@ def xcit_small_12_p2_32(pretrained=False, **kwargs):
 
 
 @register_model
+def resnet152_gelu(pretrained=False, **kwargs):
+    """Constructs a ResNet-152 model with GELU.
+    """
+    model_args = dict(block=resnet.Bottleneck,
+                      layers=[3, 8, 36, 3],
+                      act_layer=lambda inplace: nn.GELU(),
+                      **kwargs)
+    return resnet._create_resnet('resnet152', pretrained, **model_args)
+
+
+@register_model
 def resnet50_gelu(pretrained=False, **kwargs):
-    """Constructs a ResNet-50 model wit GELU."""
+    """Constructs a ResNet-50 model with GELU."""
     model_args = dict(block=resnet.Bottleneck,
                       layers=[3, 4, 6, 3],
                       act_layer=lambda inplace: nn.GELU(),
