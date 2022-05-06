@@ -429,6 +429,8 @@ def validate(args):
                           robust_top1_err=round(100 - robust_top1a, 4),
                           robust_top5=round(robust_top5a, 4),
                           robust_top5_err=round(100 - robust_top5a, 4),
+                          loss=loss_avg.item(),
+                          adv_loss=adv_loss_avg.item(),
                           param_count=round(param_count / 1e6, 2),
                           img_size=data_config['input_size'][-1],
                           cropt_pct=eval_pp_cfg.crop_pct,
@@ -439,6 +441,8 @@ def validate(args):
                          'top5': 'Acc@5',
                          'robust_top1': 'RobustAcc@1',
                          'robust_top5': 'RobustAcc@5',
+                         'loss': 'Loss',
+                         'adv_loss': 'Robust loss'
                      },
                      **results)
 
