@@ -15,7 +15,7 @@ parser.add_argument('--steps-to-try',
                     metavar='X Y Z',
                     help='The attack steps to try')
 parser.add_argument('--run-apgd-ce', action='store_true', default=False, help='Run also APGD-CE')
-parser.add_argument('--checkpoints_dir',
+parser.add_argument('--checkpoints-dir',
                     type=str,
                     default='',
                     metavar='DIR',
@@ -30,8 +30,9 @@ parser.add_argument('--epochs-to-try',
 
 def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, run_apgd_ce: bool,
                    csv_writer: GCSSummaryCsv):
-    args.checkpoint = checkpoints_dir / f"checkpoint-{epoch}.pth.tar"
+    args.checkpoint = checkpoints_dir + f"/checkpoint-{epoch}.pth.tar"
     for attack_steps in steps_to_try:
+        args.attack = "pgd"
         _logger.info(f"Starting validation with PGD-{attack_steps}")
         args.attack_steps = attack_steps
         results = validate(args)
@@ -53,7 +54,7 @@ def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, r
 def main():
     setup_default_logging()
     args = parser.parse_args()
-    checkpoints_dir = Path(args.checkpoints_dir)
+    checkpoints_dir = args.checkpoints_dir
     run_apgd_ce = args.run_apgd_ce
     steps_to_try = args.steps_to_try
     csv_writer = GCSSummaryCsv(checkpoints_dir)

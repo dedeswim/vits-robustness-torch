@@ -23,7 +23,7 @@ import torch.nn as nn
 import torch.nn.parallel
 import yaml
 from timm.bits import (AccuracyTopK, AvgTensor, Monitor, Tracker, initialize_device)
-from timm.data import (RealLabelsImagenet, create_dataset, create_loader_v2, resolve_data_config)
+from timm.data import (RealLabelsImagenet, create_dataset, create_loader_v2, fetcher, resolve_data_config)
 from timm.models import (apply_test_time_pool, create_model, is_model, list_models, load_checkpoint, xcit)
 from timm.utils import natural_key, setup_default_logging
 from torchvision import transforms
@@ -211,6 +211,10 @@ parser.add_argument('--log-wandb',
                     action='store_true',
                     default=False,
                     help='Log results to wandb using the run stored in the bucket')
+parser.add_argument('--use-mp-loader',
+                    action='store_true',
+                    default=False,
+                    help='Use Torch XLA\'s  MP Loader')
 parser.add_argument('--num-examples',
                     default=None,
                     type=int,
@@ -318,6 +322,13 @@ def validate(args):
                               num_workers=args.workers,
                               pin_memory=args.pin_mem)
 
+    # Not needed for now
+    if args.use_mp_loader and dev_env.type_xla:
+        import torch_xla.distributed.parallel_loader as pl
+        assert isinstance(loader, fetcher.Fetcher)
+        loader.use_mp_loader = True
+        loader._loader = pl.MpDeviceLoader(loader._loader, dev_env.device)
+
     if not eval_pp_cfg.normalize:
         loader.dataset.transform.transforms[-1] = transforms.ToTensor()
 
@@ -385,7 +396,7 @@ def validate(args):
             accuracy.update(output.detach(), target)
             if adv_output is not None:
                 adv_accuracy.update(adv_output.detach(), target)
-            if adv_losses is not None:
+            if adv_loss is not None:
                 adv_losses.update(adv_loss.detach(), sample.size(0))
 
             tracker.mark_iter()
@@ -393,7 +404,10 @@ def validate(args):
                 top1, top5 = accuracy.compute().values()
                 robust_top1, robust_top5 = adv_accuracy.compute().values()
                 loss_avg = losses.compute()
-                adv_loss_avg = adv_losses.compute()
+                if adv_loss is not None:
+                    adv_loss_avg = adv_losses.compute()
+                else:
+                    adv_loss_avg = None
 
                 logger.log_step(
                     phase='eval',
