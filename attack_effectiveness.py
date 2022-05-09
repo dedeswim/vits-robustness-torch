@@ -39,6 +39,7 @@ def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, r
         results["attack"] = "pgd"
         results["attack_steps"] = attack_steps
         results["model"] = args.model
+        results["epoch"] = epoch
         csv_writer.update(results)
 
     if run_apgd_ce:
@@ -48,6 +49,7 @@ def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, r
         results["attack"] = "apgd-ce"
         results["attack_steps"] = None
         results["model"] = args.model
+        results["epoch"] = epoch
         csv_writer.update(results)
 
 
