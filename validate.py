@@ -334,8 +334,14 @@ def validate(args):
 
     logger = Monitor(logger=_logger)
     tracker = Tracker()
-    losses = AvgTensor()
-    adv_losses = AvgTensor()
+    if dev_env.type_xla:
+        from src.metrics_xla import AvgTensorXLA
+        losses = AvgTensorXLA()
+        adv_losses = AvgTensorXLA()
+    else:
+        losses = AvgTensor()
+        adv_losses = AvgTensor()
+
     accuracy = AccuracyTopK(dev_env=dev_env)
     adv_accuracy = AccuracyTopK(dev_env=dev_env)
 
