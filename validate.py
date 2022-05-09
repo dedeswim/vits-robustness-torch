@@ -336,8 +336,8 @@ def validate(args):
     tracker = Tracker()
     if dev_env.type_xla:
         from src.metrics_xla import AvgTensorXLA
-        losses = AvgTensorXLA()
-        adv_losses = AvgTensorXLA()
+        losses = AvgTensorXLA(dev_env=dev_env)
+        adv_losses = AvgTensorXLA(dev_env=dev_env)
     else:
         losses = AvgTensor()
         adv_losses = AvgTensor()
@@ -424,7 +424,7 @@ def validate(args):
                     loss=loss_avg.item(),
                     top1=top1.item(),
                     top5=top5.item(),
-                    adv_loss=adv_loss_avg.item(),
+                    adv_loss=adv_loss_avg.item() if adv_loss_avg is not None else None,
                     robust_top1=robust_top1.item(),
                     robust_top5=robust_top5.item(),
                 )
@@ -450,7 +450,7 @@ def validate(args):
                           robust_top5=round(robust_top5a, 4),
                           robust_top5_err=round(100 - robust_top5a, 4),
                           loss=loss_avg.item(),
-                          adv_loss=adv_loss_avg.item(),
+                          adv_loss=adv_loss_avg.item() if adv_loss_avg is not None else None,
                           param_count=round(param_count / 1e6, 2),
                           img_size=data_config['input_size'][-1],
                           cropt_pct=eval_pp_cfg.crop_pct,
