@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+from timm.bits import initialize_device
 from timm.utils import setup_default_logging
 
 from src.utils import GCSSummaryCsv
@@ -29,13 +30,13 @@ parser.add_argument('--epochs-to-try',
 
 
 def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, run_apgd_ce: bool,
-                   csv_writer: GCSSummaryCsv):
+                   csv_writer: GCSSummaryCsv, dev_env):
     args.checkpoint = checkpoints_dir + f"/checkpoint-{epoch}.pth.tar"
     for attack_steps in steps_to_try:
         args.attack = "pgd"
-        _logger.info(f"Starting validation with PGD-{attack_steps}")
+        _logger.info(f"Starting validation with PGD-{attack_steps} at epoch {epoch}")
         args.attack_steps = attack_steps
-        results = validate(args)
+        results = validate(args, dev_env)
         results["attack"] = "pgd"
         results["attack_steps"] = attack_steps
         results["model"] = args.model
@@ -44,8 +45,8 @@ def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, r
 
     if run_apgd_ce:
         args.attack = "apgd-ce"
-        _logger.info(f"Starting validation with APGD-CE")
-        results = validate(args)
+        _logger.info(f"Starting validation with APGD-CE at epoch {epoch}")
+        results = validate(args, dev_env)
         results["attack"] = "apgd-ce"
         results["attack_steps"] = None
         results["model"] = args.model
@@ -54,14 +55,16 @@ def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, r
 
 
 def main():
+    dev_env = initialize_device()
     setup_default_logging()
     args = parser.parse_args()
     checkpoints_dir = args.checkpoints_dir
     run_apgd_ce = args.run_apgd_ce
     steps_to_try = args.steps_to_try
     csv_writer = GCSSummaryCsv(checkpoints_dir)
+    # TODO: initialize dev_env just once
     for epoch in args.epochs_to_try:
-        validate_epoch(args, checkpoints_dir, epoch, steps_to_try, run_apgd_ce, csv_writer)
+        validate_epoch(args, checkpoints_dir, epoch, steps_to_try, run_apgd_ce, csv_writer, dev_env)
 
 
 def _mp_entry(*args):

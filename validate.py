@@ -224,11 +224,11 @@ parser.add_argument('--patch-size', default=None, type=int, metavar='N', help='T
 parser.add_argument('--verbose', action='store_true', default=False, help='Runs autoattack in verbose mode')
 
 
-def validate(args):
+def validate(args, dev_env=None):
     # might as well try to validate something
     args.pretrained = args.pretrained or not args.checkpoint
 
-    dev_env = initialize_device(force_cpu=args.force_cpu, amp=args.amp)
+    dev_env = dev_env or initialize_device(force_cpu=args.force_cpu, amp=args.amp)
 
     model = create_model(args.model,
                          pretrained=args.pretrained,
@@ -465,7 +465,7 @@ def validate(args):
                          'adv_loss': 'Robust loss'
                      },
                      **results)
-
+    del model
     return results
 
 
