@@ -9,6 +9,7 @@ class AvgTensorXLA(AvgTensor):
     
     def compute(self):
         local_avg = super().compute()
-        xm.all_reduce(xm.REDUCE_SUM, local_avg, scale=1.0 / self.dev_env.world_size)
-        return local_avg
+        cctx = xm.CollectiveContext()
+        avg = xm.all_reduce(xm.REDUCE_SUM, local_avg, scale=1.0 / self.dev_env.world_size, cctx=cctx)
+        return avg
         
