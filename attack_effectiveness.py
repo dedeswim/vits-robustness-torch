@@ -6,6 +6,7 @@ from timm.data import create_dataset
 from timm.bits import initialize_device
 from timm.utils import setup_default_logging
 
+from src import utils
 from src.utils import GCSSummaryCsv
 from validate import parser, validate
 
@@ -34,11 +35,19 @@ parser.add_argument('--epochs-to-try',
 def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, run_apgd_ce: bool,
                    csv_writer: GCSSummaryCsv, dev_env, dataset):
     args.checkpoint = checkpoints_dir + f"/checkpoint-{epoch}.pth.tar"
+    model = utils.load_model_from_gcs(args.checkpoint,
+                                      args.model,
+                                      pretrained=args.pretrained,
+                                      num_classes=args.num_classes,
+                                      in_chans=3,
+                                      global_pool=args.gp,
+                                      scriptable=args.torchscript)
+
     for attack_steps in steps_to_try:
         args.attack = "pgd"
         _logger.info(f"Starting validation with PGD-{attack_steps} at epoch {epoch}")
         args.attack_steps = attack_steps
-        results = validate(args, dev_env, dataset)
+        results = validate(args, dev_env, dataset, model)
         results["attack"] = "pgd"
         results["attack_steps"] = attack_steps
         results["model"] = args.model
@@ -50,7 +59,7 @@ def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, r
     if run_apgd_ce:
         args.attack = "apgd-ce"
         _logger.info(f"Starting validation with APGD-CE at epoch {epoch}")
-        results = validate(args, dev_env, dataset)
+        results = validate(args, dev_env, dataset, model)
         results["attack"] = "apgd-ce"
         results["attack_steps"] = None
         results["model"] = args.model
@@ -67,7 +76,7 @@ def main():
     run_apgd_ce = args.run_apgd_ce
     steps_to_try = args.steps_to_try
     csv_writer = GCSSummaryCsv(checkpoints_dir)
-    
+
     dev_env = initialize_device()
     dataset = create_dataset(root=args.data,
                              name=args.dataset,

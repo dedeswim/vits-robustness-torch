@@ -221,25 +221,29 @@ parser.add_argument('--patch-size', default=None, type=int, metavar='N', help='T
 parser.add_argument('--verbose', action='store_true', default=False, help='Runs autoattack in verbose mode')
 
 
-def validate(args, dev_env=None, dataset=None):
+def validate(args, dev_env=None, dataset=None, model=None):
     # might as well try to validate something
     args.pretrained = args.pretrained or not args.checkpoint
 
     dev_env = dev_env or initialize_device(force_cpu=args.force_cpu, amp=args.amp)
 
-    model = create_model(args.model,
-                         pretrained=args.pretrained,
-                         num_classes=args.num_classes,
-                         in_chans=3,
-                         global_pool=args.gp,
-                         scriptable=args.torchscript)
+    if model is None:
+        model = create_model(args.model,
+                            pretrained=args.pretrained,
+                            num_classes=args.num_classes,
+                            in_chans=3,
+                            global_pool=args.gp,
+                            scriptable=args.torchscript)
+        passed_model_none = True
+    else:
+        passed_model_none = False
 
     if args.num_classes is None:
         assert hasattr(model,
                        'num_classes'), 'Model must have `num_classes` attr if not set on cmd line/config.'
         args.num_classes = model.num_classes
 
-    if args.checkpoint.startswith('gs://'):
+    if args.checkpoint.startswith('gs://') and passed_model_none:
         model = utils.load_model_from_gcs(args.checkpoint,
                                           args.model,
                                           pretrained=args.pretrained,
@@ -247,8 +251,11 @@ def validate(args, dev_env=None, dataset=None):
                                           in_chans=3,
                                           global_pool=args.gp,
                                           scriptable=args.torchscript)
-    elif args.checkpoint:
+
+    elif args.checkpoint and passed_model_none:
         load_checkpoint(model, args.checkpoint, args.use_ema)
+    else:
+        assert model is not None
 
     if args.patch_size is not None and isinstance(
             model, xcit.XCiT) and model.patch_embed.patch_size != args.patch_size:
@@ -428,7 +435,7 @@ def validate(args, dev_env=None, dataset=None):
 
             if last_step:
                 break
-    
+
     model = model.to("cpu")
     del model
 
