@@ -221,7 +221,7 @@ parser.add_argument('--patch-size', default=None, type=int, metavar='N', help='T
 parser.add_argument('--verbose', action='store_true', default=False, help='Runs autoattack in verbose mode')
 
 
-def validate(args, dev_env=None, dataset=None, model=None):
+def validate(args, dev_env=None, dataset=None, model=None, loader=None):
     # might as well try to validate something
     args.pretrained = args.pretrained or not args.checkpoint
 
@@ -229,11 +229,11 @@ def validate(args, dev_env=None, dataset=None, model=None):
 
     if model is None:
         model = create_model(args.model,
-                            pretrained=args.pretrained,
-                            num_classes=args.num_classes,
-                            in_chans=3,
-                            global_pool=args.gp,
-                            scriptable=args.torchscript)
+                             pretrained=args.pretrained,
+                             num_classes=args.num_classes,
+                             in_chans=3,
+                             global_pool=args.gp,
+                             scriptable=args.torchscript)
         passed_model_none = True
     else:
         passed_model_none = False
@@ -319,12 +319,12 @@ def validate(args, dev_env=None, dataset=None, model=None):
         normalize=data_config['normalize'],
     )
 
-    loader = create_loader_v2(dataset,
-                              batch_size=args.batch_size,
-                              is_training=False,
-                              pp_cfg=eval_pp_cfg,
-                              num_workers=args.workers,
-                              pin_memory=args.pin_mem)
+    loader = loader or create_loader_v2(dataset,
+                                        batch_size=args.batch_size,
+                                        is_training=False,
+                                        pp_cfg=eval_pp_cfg,
+                                        num_workers=args.workers,
+                                        pin_memory=args.pin_mem)
 
     # Not needed for now
     if args.use_mp_loader and dev_env.type_xla:
@@ -435,9 +435,6 @@ def validate(args, dev_env=None, dataset=None, model=None):
 
             if last_step:
                 break
-
-    model = model.to("cpu")
-    del model
 
     if real_labels is not None:
         # real labels mode replaces topk values at the end
