@@ -211,10 +211,7 @@ parser.add_argument('--log-wandb',
                     action='store_true',
                     default=False,
                     help='Log results to wandb using the run stored in the bucket')
-parser.add_argument('--use-mp-loader',
-                    action='store_true',
-                    default=False,
-                    help='Use Torch XLA\'s  MP Loader')
+parser.add_argument('--use-mp-loader', action='store_true', default=False, help='Use Torch XLA\'s  MP Loader')
 parser.add_argument('--num-examples',
                     default=None,
                     type=int,
@@ -224,7 +221,7 @@ parser.add_argument('--patch-size', default=None, type=int, metavar='N', help='T
 parser.add_argument('--verbose', action='store_true', default=False, help='Runs autoattack in verbose mode')
 
 
-def validate(args, dev_env=None):
+def validate(args, dev_env=None, dataset=None):
     # might as well try to validate something
     args.pretrained = args.pretrained or not args.checkpoint
 
@@ -287,12 +284,12 @@ def validate(args, dev_env=None):
     model, criterion = dev_env.to_device(model, nn.CrossEntropyLoss())
     model.to(dev_env.device)
 
-    dataset = create_dataset(root=args.data,
-                             name=args.dataset,
-                             split=args.split,
-                             download=args.dataset_download,
-                             load_bytes=args.tf_preprocessing,
-                             class_map=args.class_map)
+    dataset = dataset or create_dataset(root=args.data,
+                                        name=args.dataset,
+                                        split=args.split,
+                                        download=args.dataset_download,
+                                        load_bytes=args.tf_preprocessing,
+                                        class_map=args.class_map)
 
     if args.valid_labels:
         with open(args.valid_labels, 'r') as f:
@@ -431,6 +428,8 @@ def validate(args, dev_env=None):
 
             if last_step:
                 break
+    
+    model = model.to("cpu")
 
     if real_labels is not None:
         # real labels mode replaces topk values at the end
@@ -465,7 +464,6 @@ def validate(args, dev_env=None):
                          'adv_loss': 'Robust loss'
                      },
                      **results)
-    del model
     return results
 
 
