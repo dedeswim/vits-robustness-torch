@@ -1,3 +1,4 @@
+import gc
 import logging
 from pathlib import Path
 
@@ -44,6 +45,7 @@ def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, r
         results["epoch"] = epoch
         if dev_env.primary:
             csv_writer.update(results)
+        gc.collect()
 
     if run_apgd_ce:
         args.attack = "apgd-ce"
@@ -55,6 +57,7 @@ def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, r
         results["epoch"] = epoch
         if dev_env.primary:
             csv_writer.update(results)
+        gc.collect()
 
 
 def main():

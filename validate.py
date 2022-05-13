@@ -430,6 +430,7 @@ def validate(args, dev_env=None, dataset=None):
                 break
     
     model = model.to("cpu")
+    del model
 
     if real_labels is not None:
         # real labels mode replaces topk values at the end
