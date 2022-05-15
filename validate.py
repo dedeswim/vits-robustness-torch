@@ -25,7 +25,7 @@ import yaml
 from timm.bits import (AccuracyTopK, AvgTensor, Monitor, Tracker, initialize_device)
 from timm.data import (RealLabelsImagenet, create_dataset, create_loader_v2, fetcher, resolve_data_config)
 from timm.models import (apply_test_time_pool, create_model, is_model, list_models, load_checkpoint, xcit)
-from timm.utils import natural_key, setup_default_logging
+from timm.utils import natural_key, setup_default_logging, random_seed
 from torchvision import transforms
 
 import src.attacks as attacks
@@ -175,6 +175,7 @@ parser.add_argument('--force-cpu',
                     action='store_true',
                     default=False,
                     help='Force CPU to be used even if HW accelerator exists.')
+parser.add_argument('--seed', type=int, default=0, metavar='S', help='random seed (default: 0)')
 
 parser.add_argument('--attack',
                     default='',
@@ -223,9 +224,11 @@ parser.add_argument('--verbose', action='store_true', default=False, help='Runs 
 
 def validate(args, dev_env=None, dataset=None, model=None, loader=None):
     # might as well try to validate something
+    random_seed(args.seed, 0)  # Set all random seeds the same for model/state init (mandatory for XLA)
     args.pretrained = args.pretrained or not args.checkpoint
 
     dev_env = dev_env or initialize_device(force_cpu=args.force_cpu, amp=args.amp)
+    random_seed(args.seed, dev_env.global_rank)
 
     if model is None:
         model = create_model(args.model,
