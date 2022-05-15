@@ -27,7 +27,7 @@ parser.add_argument('--checkpoints-dir',
 parser.add_argument('--epochs-to-try',
                     type=int,
                     nargs='+',
-                    default=[0] + list(range(9, 99, 10)),
+                    default=[0] + list(range(9, 109, 10)),
                     metavar='X Y Z',
                     help='The attack steps to try')
 
@@ -84,16 +84,9 @@ def main():
                              download=args.dataset_download,
                              load_bytes=args.tf_preprocessing,
                              class_map=args.class_map)
-    loader = create_loader_v2(dataset,
-                              batch_size=args.batch_size,
-                              is_training=False,
-                              pp_cfg=eval_pp_cfg,
-                              num_workers=args.workers,
-                              pin_memory=args.pin_mem)
 
     for epoch in args.epochs_to_try:
-        validate_epoch(args, checkpoints_dir, epoch, steps_to_try, run_apgd_ce, csv_writer, dev_env, dataset,
-                       loader)
+        validate_epoch(args, checkpoints_dir, epoch, steps_to_try, run_apgd_ce, csv_writer, dev_env, dataset)
 
 
 def _mp_entry(*args):
