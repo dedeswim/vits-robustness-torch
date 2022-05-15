@@ -2,7 +2,7 @@ import gc
 import logging
 from pathlib import Path
 
-from timm.data import create_dataset, create_loader_v2
+from timm.data import create_dataset
 from timm.bits import initialize_device
 from timm.utils import setup_default_logging
 
@@ -33,7 +33,7 @@ parser.add_argument('--epochs-to-try',
 
 
 def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, run_apgd_ce: bool,
-                   csv_writer: GCSSummaryCsv, dev_env, dataset, loader):
+                   csv_writer: GCSSummaryCsv, dev_env, dataset):
     args.checkpoint = checkpoints_dir + f"/checkpoint-{epoch}.pth.tar"
     model = utils.load_model_from_gcs(args.checkpoint,
                                       args.model,
@@ -47,7 +47,7 @@ def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, r
         args.attack = "pgd"
         _logger.info(f"Starting validation with PGD-{attack_steps} at epoch {epoch}")
         args.attack_steps = attack_steps
-        results = validate(args, dev_env, dataset, model, loader)
+        results = validate(args, dev_env, dataset, model)
         results["attack"] = "pgd"
         results["attack_steps"] = attack_steps
         results["model"] = args.model
@@ -59,7 +59,7 @@ def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, r
     if run_apgd_ce:
         args.attack = "apgd-ce"
         _logger.info(f"Starting validation with APGD-CE at epoch {epoch}")
-        results = validate(args, dev_env, dataset, model, loader)
+        results = validate(args, dev_env, dataset, model)
         results["attack"] = "apgd-ce"
         results["attack_steps"] = None
         results["model"] = args.model
