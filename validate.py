@@ -415,7 +415,7 @@ def validate(args, dev_env=None, dataset=None, model=None, loader=None):
                 adv_losses.update(adv_loss.detach(), sample.size(0))
 
             tracker.mark_iter()
-            if last_step or step_idx % args.log_freq == 0:
+            if step_idx == 0 or last_step or step_idx % args.log_freq == 0:
                 top1, top5 = accuracy.compute().values()
                 robust_top1, robust_top5 = adv_accuracy.compute().values()
                 loss_avg = losses.compute()

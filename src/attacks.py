@@ -94,7 +94,11 @@ def pgd(model: nn.Module,
     return x_adv
 
 
-_ATTACKS = {"pgd": pgd, "targeted_pgd": functools.partial(pgd, targeted=True, random_targets=True)}
+_ATTACKS = {
+    "pgd": pgd,
+    "targeted_pgd": functools.partial(pgd, targeted=True, random_targets=True),
+    "real_pgd": functools.partial(pgd, take_sign=False)
+}
 _INIT_PROJECT_FN: Dict[str, Tuple[InitFn, ProjectFn]] = {
     "linf": (init_linf, project_linf),
     "l2": (init_l2, project_l2)
@@ -245,6 +249,7 @@ class AdvTrainingLoss(nn.Module):
 
 class TRADESLoss(nn.Module):
     """Adapted from https://github.com/yaodongyu/TRADES/blob/master/trades.py#L17"""
+
     def __init__(self,
                  attack_cfg: AttackCfg,
                  natural_criterion: nn.Module,
