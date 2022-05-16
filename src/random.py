@@ -1,7 +1,6 @@
 import random
 import numpy as np
 import torch
-from zmq import device
 
 
 def random_seed(seed=42, rank=0, dev_env=None):
