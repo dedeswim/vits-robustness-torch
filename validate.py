@@ -25,11 +25,12 @@ import yaml
 from timm.bits import (AccuracyTopK, AvgTensor, Monitor, Tracker, initialize_device)
 from timm.data import (RealLabelsImagenet, create_dataset, create_loader_v2, fetcher, resolve_data_config)
 from timm.models import (apply_test_time_pool, create_model, is_model, list_models, load_checkpoint, xcit)
-from timm.utils import natural_key, setup_default_logging, random_seed
+from timm.utils import natural_key, setup_default_logging
 from torchvision import transforms
 
 import src.attacks as attacks
 import src.models as models  # Import needed to register the extra models that are not in timm
+from src.random import random_seed
 import src.utils as utils
 
 _logger = logging.getLogger('validate')
