@@ -1,6 +1,7 @@
 import gc
 import logging
 from pathlib import Path
+from typing import List
 
 from timm.data import create_dataset
 from timm.bits import initialize_device
@@ -30,10 +31,11 @@ parser.add_argument('--epochs-to-try',
                     default=[0] + list(range(9, 109, 10)),
                     metavar='X Y Z',
                     help='The attack steps to try')
+parser.add_argument('--seeds', type=int, nargs='+', default=[0], metavar='X Y Z', help='The seeds to try')
 
 
-def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, run_apgd_ce: bool,
-                   csv_writer: GCSSummaryCsv, dev_env, dataset):
+def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: List[int], seeds: List[int],
+                   run_apgd_ce: bool, csv_writer: GCSSummaryCsv, dev_env, dataset):
     args.checkpoint = checkpoints_dir + f"/checkpoint-{epoch}.pth.tar"
     model = utils.load_model_from_gcs(args.checkpoint,
                                       args.model,
@@ -43,31 +45,35 @@ def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, r
                                       global_pool=args.gp,
                                       scriptable=args.torchscript)
 
-    for attack_steps in steps_to_try:
-        args.attack = "pgd"
-        if dev_env.primary:
-            _logger.info(f"Starting validation with PGD-{attack_steps} at epoch {epoch}")
-        args.attack_steps = attack_steps
-        results = validate(args, dev_env, dataset, model)
-        results["attack"] = "pgd"
-        results["attack_steps"] = attack_steps
-        results["model"] = args.model
-        results["epoch"] = epoch
-        if dev_env.primary:
-            csv_writer.update(results)
-        gc.collect()
+    for seed in seeds:
+        args.seed = seed
+        for attack_steps in steps_to_try:
+            args.attack = "pgd"
+            if dev_env.primary:
+                _logger.info(f"Starting validation with PGD-{attack_steps} at epoch {epoch}")
+            args.attack_steps = attack_steps
+            results = validate(args, dev_env, dataset, model)
+            results["attack"] = "pgd"
+            results["attack_steps"] = attack_steps
+            results["model"] = args.model
+            results["epoch"] = epoch
+            results["seed"] = seed
+            if dev_env.primary:
+                csv_writer.update(results)
+            gc.collect()
 
-    if run_apgd_ce:
-        args.attack = "apgd-ce"
-        _logger.info(f"Starting validation with APGD-CE at epoch {epoch}")
-        results = validate(args, dev_env, dataset, model)
-        results["attack"] = "apgd-ce"
-        results["attack_steps"] = None
-        results["model"] = args.model
-        results["epoch"] = epoch
-        if dev_env.primary:
-            csv_writer.update(results)
-        gc.collect()
+        if run_apgd_ce:
+            args.attack = "apgd-ce"
+            _logger.info(f"Starting validation with APGD-CE at epoch {epoch}")
+            results = validate(args, dev_env, dataset, model)
+            results["attack"] = "apgd-ce"
+            results["attack_steps"] = None
+            results["model"] = args.model
+            results["epoch"] = epoch
+            results["seed"] = seed
+            if dev_env.primary:
+                csv_writer.update(results)
+            gc.collect()
 
 
 def main():
@@ -76,6 +82,7 @@ def main():
     checkpoints_dir = args.checkpoints_dir
     run_apgd_ce = args.run_apgd_ce
     steps_to_try = args.steps_to_try
+    seeds = args.seeds
     csv_writer = GCSSummaryCsv(checkpoints_dir)
 
     dev_env = initialize_device()
@@ -87,7 +94,7 @@ def main():
                              class_map=args.class_map)
 
     for epoch in args.epochs_to_try:
-        validate_epoch(args, checkpoints_dir, epoch, steps_to_try, run_apgd_ce, csv_writer, dev_env, dataset)
+        validate_epoch(args, checkpoints_dir, epoch, steps_to_try, seeds, run_apgd_ce, csv_writer, dev_env, dataset)
 
 
 def _mp_entry(*args):

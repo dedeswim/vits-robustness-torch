@@ -229,7 +229,6 @@ def validate(args, dev_env=None, dataset=None, model=None, loader=None):
     args.pretrained = args.pretrained or not args.checkpoint
 
     dev_env = dev_env or initialize_device(force_cpu=args.force_cpu, amp=args.amp)
-    random_seed(args.seed, dev_env.global_rank)
 
     if model is None:
         model = create_model(args.model,
@@ -260,6 +259,8 @@ def validate(args, dev_env=None, dataset=None, model=None, loader=None):
         load_checkpoint(model, args.checkpoint, args.use_ema)
     else:
         assert model is not None
+
+    random_seed(args.seed, dev_env.global_rank)
 
     if args.patch_size is not None and isinstance(
             model, xcit.XCiT) and model.patch_embed.patch_size != args.patch_size:
