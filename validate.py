@@ -340,7 +340,7 @@ def validate(args, dev_env=None, dataset=None, model=None, loader=None):
     if not eval_pp_cfg.normalize:
         loader.dataset.transform.transforms[-1] = transforms.ToTensor()
 
-    logger = Monitor(logger=_logger)
+    logger = Monitor(logger=_logger, output_enabled=dev_env.primary)
     tracker = Tracker()
     if dev_env.type_xla:
         from src.metrics_xla import AvgTensorXLA

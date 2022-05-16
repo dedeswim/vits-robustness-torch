@@ -45,7 +45,8 @@ def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: int, r
 
     for attack_steps in steps_to_try:
         args.attack = "pgd"
-        _logger.info(f"Starting validation with PGD-{attack_steps} at epoch {epoch}")
+        if dev_env.primary:
+            _logger.info(f"Starting validation with PGD-{attack_steps} at epoch {epoch}")
         args.attack_steps = attack_steps
         results = validate(args, dev_env, dataset, model)
         results["attack"] = "pgd"
