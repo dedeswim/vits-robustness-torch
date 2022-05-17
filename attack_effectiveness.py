@@ -28,7 +28,7 @@ parser.add_argument('--checkpoints-dir',
 parser.add_argument('--epochs-to-try',
                     type=int,
                     nargs='+',
-                    default=[0] + list(range(9, 109, 10)),
+                    default=[],
                     metavar='X Y Z',
                     help='The attack steps to try')
 parser.add_argument('--seeds', type=int, nargs='+', default=[0], metavar='X Y Z', help='The seeds to try')
