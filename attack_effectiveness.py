@@ -98,7 +98,7 @@ def main():
         validate_epoch(args, checkpoints_dir, epoch, steps_to_try, seeds, run_apgd_ce, csv_writer, dev_env, dataset)
 
     if args.validate_standard:
-        validate_epoch(args, checkpoints_dir, "standard", steps_to_try, run_apgd_ce, csv_writer, dev_env, dataset)
+        validate_epoch(args, checkpoints_dir, "standard", steps_to_try, seeds, run_apgd_ce, csv_writer, dev_env, dataset)
 
 
 def _mp_entry(*args):
