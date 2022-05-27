@@ -17,7 +17,7 @@ In case you want to read or write your results to a Google Cloud Storage bucket 
 
 ## Training
 
-All these commands are meant to be run on TPU VMs with 8 TPU cores. They can be easily adapted to work on GPUs by using `torch.distributed.launch` (and by removing the `launch_xla.py --num-devices 8` part). The LR can be scaled as explained in the appendix of our paper (which follows DeiT's convention).
+All these commands are meant to be run on TPU VMs with 8 TPU cores. They can be easily adapted to work on GPUs by using `torch.distributed.launch` (and by removing the `launch_xla.py --num-devices 8` part). The LR can be scaled as explained in the appendix of our paper (which follows DeiT's convention). More info about how to run the training script on TPUs and GPUs can be found in `timm.bits`'s [README](https://github.com/rwightman/pytorch-image-models/tree/bits_and_tpu/timm/bits#timm-bits).
 
 To log the results to W&B it is enough to add the flag `--log-wandb`. The W&B experiment will have the name passed to the `--experiment` flag.
 
@@ -242,7 +242,7 @@ If the model has been trained using a specific mean and std, then they should be
 
 ## Attack effectiveness experiment
 
-To reproduce the attack effectiveness experiment, you can run the `attack_effectiveness.py` script. The results are written to a CSV file created in the same folder as the checkpoints that are tested. We process the CSV files generated with the [attack_effectiveness.ipynb](notebooks/attack_effectiveness.ipynb) notebook.
+To reproduce the attack effectiveness experiment, you can run the `attack_effectiveness.py` script. The results are written to a CSV file created in the same folder as that of the checkpoints that are tested. We process the CSV files generated with the [attack_effectiveness.ipynb](notebooks/attack_effectiveness.ipynb) notebook.
 
 ## Code
 
@@ -258,6 +258,8 @@ The [datasets](datasets/) directory contains the code to generate the TFDS datas
 - [RobustBench Imagenet](datasets/robustbench_image_net/): to generate the subset of 5000 images used in RobustBench as a TFDS dataset.
 - [ImageNet Perturbations](datasets/imagenet_perturbations/): to generate a dataset of adversarial perturbations targeting several models for the RobustBench subset. We used these perturbations to classify them with SOTA ImageNet models to quantify the perceptual nature of adversarial perturbations.
 - [ImageNet AdvEx](datasets/imagenet_advex/): to generate a dataset of adversarial examples targeting several models for the RobustBench subset.
+
+Additional information about how TFDS datasets are generated can be found on TFDS' [documentation](https://www.tensorflow.org/datasets/add_dataset).
 
 ### Tests
 
