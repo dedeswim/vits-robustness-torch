@@ -1,4 +1,6 @@
-# ViTs Robustness
+# Adversarially Robust Vision Transformers
+
+Repository for the Adversarially Robust Vision Transformers paper.
 
 ## Pre-requisites
 
@@ -51,7 +53,7 @@ python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --exp
 
 </details>
 
-### XCiT-S12, XCiT-M12 and XCiT-L12 ImageNet pre-training with $\epsilon=8/255$
+### XCiT-S12, XCiT-M12 and XCiT-L12 ImageNet pre-training with epsilon 8
 
 <details>
 
@@ -67,7 +69,7 @@ python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --exp
 
 </details>
 
-### XCiT-S12, XCiT-M12, and XCiT-L12 finetuning on Oxford Flowers or Caltech101$
+### XCiT-S12, XCiT-M12, and XCiT-L12 finetuning on Oxford Flowers or Caltech101
 
 <details>
 
@@ -135,6 +137,66 @@ The models are different, as we need to adapt the patch embedding layer to work 
 Moreover, for CIFAR10 you should specify `--mean 0.4914 0.4822 0.4465 --std 0.2471 0.2435 0.2616`, and for CIFAR100 you should specify `--mean 0.5071 0.4867 0.4408 --std 0.2675 0.2565 0.2761`.
 
 </details>
+
+## Checkpoints
+
+### ImageNet
+
+#### Epsilon 4
+
+| Model          | Checkpoint | Model name               |
+|----------------|------------|--------------------------|
+| XCiT-S12       | [link]()   | `xcit_small_12_p16_224`  |
+| XCiT-M12       | [link]()   | `xcit_medium_12_p16_224` |
+| XCiT-L12       | [link]()   | `xcit_large_12_p16_224`  |
+| ConvNeXt-T     | [link]()   | `convnext_tiny`          |
+| GELU ResNet-50 | [link]()   | `resnet_50_gelu`         |
+
+#### Epsilon 8
+
+| Model          | Checkpoint | Model name               |
+|----------------|------------|--------------------------|
+| XCiT-S12       | [link]()   | `xcit_small_12_p16_224`  |
+| XCiT-M12       | [link]()   | `xcit_medium_12_p16_224` |
+| XCiT-L12       | [link]()   | `xcit_large_12_p16_224`  |
+| ConvNeXt-T     | [link]()   | `convnext_tiny`          |
+| GELU ResNet-50 | [link]()   | `resnet_50_gelu`         |
+
+### CIFAR-10
+
+| Model     | Checkpoint | Model name             |
+|-----------|------------|------------------------|
+| XCiT-S12  | [link]()   | `xcit_small_12_p4_32`  |
+| XCiT-M12  | [link]()   | `xcit_medium_12_p4_32` |
+| XCiT-L12  | [link]()   | `xcit_large_12_4_32`   |
+| ResNet-50 | [link]()   | `resnet_50_32`         |
+
+### CIFAR-100
+
+| Model     | Checkpoint | Model name             |
+|-----------|------------|------------------------|
+| XCiT-S12  | [link]()   | `xcit_small_12_p4_32`  |
+| XCiT-M12  | [link]()   | `xcit_medium_12_p4_32` |
+| XCiT-L12  | [link]()   | `xcit_large_12_4_32`   |
+| ResNet-50 | [link]()   | `resnet_50_32`         |
+
+### Oxford Flowers
+
+| Model     | Checkpoint | Model name               |
+|-----------|------------|--------------------------|
+| XCiT-S12  | [link]()   | `xcit_small_12_p12_224`  |
+| XCiT-M12  | [link]()   | `xcit_medium_12_p12_224` |
+| XCiT-L12  | [link]()   | `xcit_large_12_p12_224`  |
+| ResNet-50 | [link]()   | `resnet_50`              |
+
+### Caltech101
+
+| Model     | Checkpoint | Model name               |
+|-----------|------------|--------------------------|
+| XCiT-S12  | [link]()   | `xcit_small_12_p12_224`  |
+| XCiT-M12  | [link]()   | `xcit_medium_12_p12_224` |
+| XCiT-L12  | [link]()   | `xcit_large_12_p12_224`  |
+| ResNet-50 | [link]()   | `resnet_50`              |
 
 ## Validation
 
@@ -206,3 +268,7 @@ In order to run the unit tests, install pytest via `pip install pytest`, and run
 ```bash
 python -m pytest .
 ```
+
+## Acknowledgements
+
+Research supported with Cloud TPUs from Google's TPU Research Cloud (TRC), which granted extensive hardware support with both TPUv3 and TPUv4 devices.
