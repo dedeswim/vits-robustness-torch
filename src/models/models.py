@@ -1,4 +1,4 @@
-from timm.models import cait, resnet, xcit
+from timm.models import cait, poolformer, resnet, xcit
 from timm.models.helpers import build_model_with_cfg
 from timm.models.registry import register_model
 from torch import nn
@@ -17,7 +17,8 @@ default_cfgs = {
     'resnet50_32': resnet._cfg(input_size=(3, 32, 32), interpolation='bicubic', crop_pct=1),
     'resnet50_gelu': resnet._cfg(interpolation='bicubic', crop_pct=0.95),
     'resnet152_gelu': resnet._cfg(interpolation='bicubic', crop_pct=0.95),
-    'resnext152_32x8d': resnet._cfg(input_size=(3, 380, 380))
+    'resnext152_32x8d': resnet._cfg(input_size=(3, 380, 380)),
+    'poolformer_m12': poolformer._cfg(crop_pct=0.95)
 }
 
 
@@ -163,7 +164,7 @@ def resnet152_gelu(pretrained=False, **kwargs):
 def resnet50_32(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     """
-    model_args = dict(block=resnet.Bottleneck, layers=[3, 4, 6, 3],  **kwargs)
+    model_args = dict(block=resnet.Bottleneck, layers=[3, 4, 6, 3], **kwargs)
     model = resnet._create_resnet('resnet50_32', pretrained, **model_args)
     model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
     model.maxpool = nn.Identity()
@@ -200,3 +201,16 @@ def resnext152_32x8d(pretrained=False, **kwargs):
                       act_layer=nn.SiLU,
                       **kwargs)
     return resnet._create_resnet('resnext152_32x8d', pretrained, **model_args)
+
+
+@register_model
+def poolformer_m12(pretrained=False, **kwargs):
+    """ PoolFormer-M12 model, Params: 12M """
+    layers = (2, 2, 6, 2)
+    embed_dims = (96, 192, 384, 768)
+    model = poolformer._create_poolformer('poolformer_m12',
+                                          pretrained=pretrained,
+                                          layers=layers,
+                                          embed_dims=embed_dims,
+                                          **kwargs)
+    return model
