@@ -306,11 +306,10 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         state_dict = model.state_dict()
 
         # FIXME: probably not needed as we call `reset_classifier` below
-        for k in ['head.weight', 'head.bias', 'head_dist.weight', 'head_dist.bias', 'fc.weight', 'fc.bias']:
+        for k in ['head.weight', 'head.bias', 'head_dist.weight', 'head_dist.bias', 'fc.weight', 'fc.bias', 'conv1.weight', 'conv1.bias']:
             if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
                 _logger.info(f"Removing key {k} from pretrained checkpoint")
                 del checkpoint_model[k]
-
         try:
             num_classes = args.num_classes
             model.reset_classifier(num_classes=num_classes)

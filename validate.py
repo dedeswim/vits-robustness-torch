@@ -35,6 +35,7 @@ from torchvision import transforms
 
 import src.attacks as attacks
 import src.models as models  # Import needed to register the extra models that are not in timm
+from src.random import random_seed
 import src.utils as utils
 
 _logger = logging.getLogger('validate')
@@ -180,6 +181,7 @@ parser.add_argument('--force-cpu',
                     action='store_true',
                     default=False,
                     help='Force CPU to be used even if HW accelerator exists.')
+parser.add_argument('--seed', type=int, default=0, metavar='S', help='random seed (default: 0)')
 
 parser.add_argument('--attack',
                     default='',
@@ -216,10 +218,7 @@ parser.add_argument('--log-wandb',
                     action='store_true',
                     default=False,
                     help='Log results to wandb using the run stored in the bucket')
-parser.add_argument('--use-mp-loader',
-                    action='store_true',
-                    default=False,
-                    help='Use Torch XLA\'s  MP Loader')
+parser.add_argument('--use-mp-loader', action='store_true', default=False, help='Use Torch XLA\'s  MP Loader')
 parser.add_argument('--num-examples',
                     default=None,
                     type=int,
@@ -229,25 +228,30 @@ parser.add_argument('--patch-size', default=None, type=int, metavar='N', help='T
 parser.add_argument('--verbose', action='store_true', default=False, help='Runs autoattack in verbose mode')
 
 
-def validate(args, dev_env=None):
+def validate(args, dev_env=None, dataset=None, model=None, loader=None):
     # might as well try to validate something
+    random_seed(args.seed, 0)  # Set all random seeds the same for model/state init (mandatory for XLA)
     args.pretrained = args.pretrained or not args.checkpoint
 
     dev_env = dev_env or initialize_device(force_cpu=args.force_cpu, amp=args.amp)
 
-    model = create_model(args.model,
-                         pretrained=args.pretrained,
-                         num_classes=args.num_classes,
-                         in_chans=3,
-                         global_pool=args.gp,
-                         scriptable=args.torchscript)
+    if model is None:
+        model = create_model(args.model,
+                             pretrained=args.pretrained,
+                             num_classes=args.num_classes,
+                             in_chans=3,
+                             global_pool=args.gp,
+                             scriptable=args.torchscript)
+        passed_model_none = True
+    else:
+        passed_model_none = False
 
     if args.num_classes is None:
         assert hasattr(model,
                        'num_classes'), 'Model must have `num_classes` attr if not set on cmd line/config.'
         args.num_classes = model.num_classes
 
-    if args.checkpoint.startswith('gs://'):
+    if args.checkpoint.startswith('gs://') and passed_model_none:
         model = utils.load_model_from_gcs(args.checkpoint,
                                           args.model,
                                           pretrained=args.pretrained,
@@ -255,8 +259,13 @@ def validate(args, dev_env=None):
                                           in_chans=3,
                                           global_pool=args.gp,
                                           scriptable=args.torchscript)
-    elif args.checkpoint:
+
+    elif args.checkpoint and passed_model_none:
         load_checkpoint(model, args.checkpoint, args.use_ema)
+    else:
+        assert model is not None
+
+    random_seed(args.seed, dev_env.global_rank)
 
     if args.patch_size is not None and isinstance(
             model, xcit.XCiT) and model.patch_embed.patch_size != args.patch_size:
@@ -292,12 +301,12 @@ def validate(args, dev_env=None):
     model, criterion = dev_env.to_device(model, nn.CrossEntropyLoss())
     model.to(dev_env.device)
 
-    dataset = create_dataset(root=args.data,
-                             name=args.dataset,
-                             split=args.split,
-                             download=args.dataset_download,
-                             load_bytes=args.tf_preprocessing,
-                             class_map=args.class_map)
+    dataset = dataset or create_dataset(root=args.data,
+                                        name=args.dataset,
+                                        split=args.split,
+                                        download=args.dataset_download,
+                                        load_bytes=args.tf_preprocessing,
+                                        class_map=args.class_map)
 
     if args.valid_labels:
         with open(args.valid_labels, 'r') as f:
@@ -320,12 +329,12 @@ def validate(args, dev_env=None):
         normalize=data_config['normalize'],
     )
 
-    loader = create_loader_v2(dataset,
-                              batch_size=args.batch_size,
-                              is_training=False,
-                              pp_cfg=eval_pp_cfg,
-                              num_workers=args.workers,
-                              pin_memory=args.pin_mem)
+    loader = loader or create_loader_v2(dataset,
+                                        batch_size=args.batch_size,
+                                        is_training=False,
+                                        pp_cfg=eval_pp_cfg,
+                                        num_workers=args.workers,
+                                        pin_memory=args.pin_mem)
 
     # Not needed for now
     if args.use_mp_loader and dev_env.type_xla:
@@ -337,7 +346,7 @@ def validate(args, dev_env=None):
     if not eval_pp_cfg.normalize:
         loader.dataset.transform.transforms[-1] = transforms.ToTensor()
 
-    logger = Monitor(logger=_logger)
+    logger = Monitor(logger=_logger, output_enabled=dev_env.primary)
     tracker = Tracker()
     if dev_env.type_xla:
         from src.metrics_xla import AvgTensorXLA
@@ -411,7 +420,7 @@ def validate(args, dev_env=None):
                 adv_losses.update(adv_loss.detach(), sample.size(0))
 
             tracker.mark_iter()
-            if last_step or step_idx % args.log_freq == 0:
+            if step_idx == 0 or last_step or step_idx % args.log_freq == 0:
                 top1, top5 = accuracy.compute().values()
                 robust_top1, robust_top5 = adv_accuracy.compute().values()
                 loss_avg = losses.compute()
@@ -470,7 +479,6 @@ def validate(args, dev_env=None):
                          'adv_loss': 'Robust loss'
                      },
                      **results)
-    del model
     return results
 
 
