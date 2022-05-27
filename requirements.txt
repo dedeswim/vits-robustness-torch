@@ -1,6 +1,6 @@
 tensorflow-cpu==2.7.0
 tensorflow-datasets==4.4.0
-git+https://github.com/rwightman/pytorch-image-models.git@fafece230b8c8325fd6144efbab25cbc6cf5ca5c
+git+https://github.com/rwightman/pytorch-image-models.git@dff33730b38aa8e923da14fef34f7c84c9431c18
 git+https://github.com/fra31/auto-attack.git@aaba775aedf24c86099ca0340d62275878a101ae
 pyyaml
 fvcore
