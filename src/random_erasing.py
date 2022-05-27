@@ -1,3 +1,13 @@
+"""Random Erasing implementation to work on inputs in [0, 1].
+
+Parts of this file are adapted from PyTorch Image Models by Ross Wightman
+
+The original ones can be found at https://github.com/rwightman/pytorch-image-models/
+
+The original license can be found at this link:
+https://github.com/rwightman/pytorch-image-models/blob/master/LICENSE
+"""
+
 import math
 import random
 

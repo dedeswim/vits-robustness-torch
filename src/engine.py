@@ -1,3 +1,13 @@
+"""Core training and eval functions.
+
+The functions in this module are adapted from PyTorch Image Models by Ross Wightman
+
+The original ones can be found at https://github.com/rwightman/pytorch-image-models/
+
+The original license can be found at this link:
+https://github.com/rwightman/pytorch-image-models/blob/master/LICENSE
+"""
+
 from collections import OrderedDict
 from dataclasses import replace
 from typing import Optional, Tuple
