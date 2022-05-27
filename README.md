@@ -140,63 +140,61 @@ Moreover, for CIFAR10 you should specify `--mean 0.4914 0.4822 0.4465 --std 0.24
 
 ## Checkpoints
 
+All the checkpoints can be found in [this](https://drive.google.com/drive/folders/1Q_E3ryzgLCkvrtmrUjal9V3Eh0X-Vpsr) Google Drive folder.
+
 ### ImageNet
 
 #### Epsilon 4
 
 | Model          | AutoAttack accuracy | Clean accuracy | Checkpoint | Model name               |
 |----------------|---------------------|----------------|------------|--------------------------|
-| XCiT-S12       |                     |                | [link]()   | `xcit_small_12_p16_224`  |
-| XCiT-M12       |                     |                | [link]()   | `xcit_medium_12_p16_224` |
-| XCiT-L12       |                     |                | [link]()   | `xcit_large_12_p16_224`  |
-| ConvNeXt-T     |                     |                | [link]()   | `convnext_tiny`          |
-| GELU ResNet-50 |                     |                | [link]()   | `resnet_50_gelu`           |
+| XCiT-S12       |                     |                | [link](https://drive.google.com/file/d/1wbx18o4l_ECyEYo9eyHnIYPlSNRMpO-D/view?usp=sharing)   | `xcit_small_12_p16_224`  |
+| XCiT-M12       |                     |                | [link](https://drive.google.com/file/d/184utgGfgh6m_GDBe_mETWf0HmxksGCHH/view?usp=sharing)   | `xcit_medium_12_p16_224` |
+| XCiT-L12       |                     |                | [link](https://drive.google.com/file/d/154l0cWMtBMK64yG7gn3fzoTQSATHR8H5/view?usp=sharing)   | `xcit_large_12_p16_224`  |
+| ConvNeXt-T     |                     |                | [link](https://drive.google.com/file/d/1EAMVH8e67cXIFPlmK-JFFK0hzuONOWyq/view?usp=sharing)   | `convnext_tiny`          |
+| GELU ResNet-50 |                     |                | [link](https://drive.google.com/file/d/1akb4N1B5mmesZsYGIhhDwtO-3iiKu5tb/view?usp=sharing)   | `resnet_50_gelu`           |
 
 #### Epsilon 8
 
 | Model          | AutoAttack accuracy | Clean accuracy | Checkpoint | Model name               |
 |----------------|---------------------|----------------|------------|--------------------------|
-| XCiT-S12       |                     |                | [link]()   | `xcit_small_12_p16_224`  |
-| XCiT-M12       |                     |                | [link]()   | `xcit_medium_12_p16_224` |
-| XCiT-L12       |                     |                | [link]()   | `xcit_large_12_p16_224`  |
-| ConvNeXt-T     |                     |                | [link]()   | `convnext_tiny`          |
-| GELU ResNet-50 |                     |                | [link]()   | `resnet_50_gelu`         |
+| XCiT-S12       |                     |                | [link](https://drive.google.com/file/d/1lFcXruv6lUz9XqxvXTzyA_7YLprPZq2q/view?usp=sharing)   | `xcit_small_12_p16_224`  |
+| XCiT-M12       |                     |                | [link](https://drive.google.com/file/d/1Nw86jzlXLEGbFQZtd39i0Mampwh2ZAFv/view?usp=sharing)   | `xcit_medium_12_p16_224` |
+| XCiT-L12       |                     |                | [link](https://drive.google.com/file/d/1UPDBDkirsxUGBEDrznJrTZ0JR173nMlv/view?usp=sharing)   | `xcit_large_12_p16_224`  |
+| ConvNeXt-T     |                     |                | [link](https://drive.google.com/file/d/1JyRn30kY0NPUGEigaOrGLDIkIC_V932W/view?usp=sharing)   | `convnext_tiny`          |
+| GELU ResNet-50 |                     |                | [link](https://drive.google.com/file/d/16XlIPBlPA2xlYb5D4BOoNEgYl5UwyW7b/view?usp=sharing)   | `resnet_50_gelu`         |
 
 ### CIFAR-10
 
 | Model     | AutoAttack accuracy | Clean accuracy | Checkpoint | Model name             |
 |-----------|---------------------|----------------|------------|------------------------|
-| XCiT-S12  |                     |                | [link]()   | `xcit_small_12_p4_32`  |
-| XCiT-M12  |                     |                | [link]()   | `xcit_medium_12_p4_32` |
-| XCiT-L12  |                     |                | [link]()   | `xcit_large_12_4_32`   |
-| ResNet-50 |                     |                | [link]()   | `resnet_50_32`         |
+| XCiT-S12  |                     |                | [link](https://drive.google.com/file/d/1hu7Z4LhR4OOL3gmbHuT9ljRTSKIxGbPs/view?usp=sharing)   | `xcit_small_12_p4_32`  |
+| XCiT-M12  |                     |                | [link](https://drive.google.com/file/d/1yan2zUNA6s6zDc0MOkfgCr3ctjWcQEI0/view?usp=sharing)   | `xcit_medium_12_p4_32` |
+| XCiT-L12  |                     |                | [link](https://drive.google.com/file/d/1NWI77UiSD5nOx6dQgvIyPRYQof-8ke-y/view?usp=sharing)   | `xcit_large_12_4_32`   |
+| ResNet-50 |                     |                | [link](https://drive.google.com/file/d/1hAHZutBd7ttO9tz30k1swc6nhyqpJqdF/view?usp=sharing)   | `resnet_50_32`         |
 
 ### CIFAR-100
 
 | Model     | AutoAttack accuracy | Clean accuracy | Checkpoint | Model name             |
 |-----------|---------------------|----------------|------------|------------------------|
-| XCiT-S12  |                     |                | [link]()   | `xcit_small_12_p4_32`  |
-| XCiT-M12  |                     |                | [link]()   | `xcit_medium_12_p4_32` |
-| XCiT-L12  |                     |                | [link]()   | `xcit_large_12_4_32`   |
-| ResNet-50 |                     |                | [link]()   | `resnet_50_32`         |
+| XCiT-S12  |                     |                | [link](https://drive.google.com/file/d/13vFwvVWEESfWWpoicPhD08HtzYszeyUr/view?usp=sharing)   | `xcit_small_12_p4_32`  |
+| XCiT-M12  |                     |                | [link](https://drive.google.com/file/d/1YXnGsY3yvvaMucMwyfhDHIUchOSungj2/view?usp=sharing)   | `xcit_medium_12_p4_32` |
+| XCiT-L12  |                     |                | [link](https://drive.google.com/file/d/1Sg4BQ5pBdlR_M41VDxOlYxCl1_It8elL/view?usp=sharing)   | `xcit_large_12_4_32`   |
+| ResNet-50 |                     |                | [link](https://drive.google.com/file/d/1RweWjpjMyyhF8P1JdjuDc09F6wp4TsF9/view?usp=sharing)   | `resnet_50_32`         |
 
 ### Oxford Flowers
 
 | Model     | AutoAttack accuracy | Clean accuracy | Checkpoint | Model name               |
 |-----------|---------------------|----------------|------------|--------------------------|
-| XCiT-S12  |                     |                | [link]()   | `xcit_small_12_p12_224`  |
-| XCiT-M12  |                     |                | [link]()   | `xcit_medium_12_p12_224` |
-| XCiT-L12  |                     |                | [link]()   | `xcit_large_12_p12_224`  |
-| ResNet-50 |                     |                | [link]()   | `resnet_50`              |
+| XCiT-S12  |                     |                | [link](https://drive.google.com/file/d/1XHCbdj5vXUybofNmNd5a2LGQeVxITCpE/view?usp=sharing)   | `xcit_small_12_p12_224`  |
+| ResNet-50 |                     |                | [link](https://drive.google.com/file/d/1y41kNkiSwNPNs61QZhm9Cy0arBkeKjA0/view?usp=sharing)   | `resnet_50`              |
 
 ### Caltech101
 
 | Model     | AutoAttack accuracy | Clean accuracy | Checkpoint | Model name               |
 |-----------|---------------------|----------------|------------|--------------------------|
-| XCiT-S12  |                     |                | [link]()   | `xcit_small_12_p12_224`  |
-| XCiT-M12  |                     |                | [link]()   | `xcit_medium_12_p12_224` |
-| XCiT-L12  |                     |                | [link]()   | `xcit_large_12_p12_224`  |
-| ResNet-50 |                     |                | [link]()   | `resnet_50`              |
+| XCiT-S12  |                     |                | [link](https://drive.google.com/file/d/1l_wdzgXI5lE6RVOtZvIzaPOMfoL6a1GJ/view?usp=sharing)   | `xcit_small_12_p12_224`  |
+| ResNet-50 |                     |                | [link](https://drive.google.com/file/d/1sNwwZ4gIP7yIwv87RSaWu70duAUotruW/view?usp=sharing)   | `resnet_50`              |
 
 ## Validation
 
