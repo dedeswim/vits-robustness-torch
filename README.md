@@ -144,59 +144,59 @@ Moreover, for CIFAR10 you should specify `--mean 0.4914 0.4822 0.4465 --std 0.24
 
 #### Epsilon 4
 
-| Model          | Checkpoint | Model name               |
-|----------------|------------|--------------------------|
-| XCiT-S12       | [link]()   | `xcit_small_12_p16_224`  |
-| XCiT-M12       | [link]()   | `xcit_medium_12_p16_224` |
-| XCiT-L12       | [link]()   | `xcit_large_12_p16_224`  |
-| ConvNeXt-T     | [link]()   | `convnext_tiny`          |
-| GELU ResNet-50 | [link]()   | `resnet_50_gelu`         |
+| Model          | AutoAttack accuracy | Clean accuracy | Checkpoint | Model name               |
+|----------------|---------------------|----------------|------------|--------------------------|
+| XCiT-S12       |                     |                | [link]()   | `xcit_small_12_p16_224`  |
+| XCiT-M12       |                     |                | [link]()   | `xcit_medium_12_p16_224` |
+| XCiT-L12       |                     |                | [link]()   | `xcit_large_12_p16_224`  |
+| ConvNeXt-T     |                     |                | [link]()   | `convnext_tiny`          |
+| GELU ResNet-50 |                     |                | [link]()   | `resnet_50_gelu`           |
 
 #### Epsilon 8
 
-| Model          | Checkpoint | Model name               |
-|----------------|------------|--------------------------|
-| XCiT-S12       | [link]()   | `xcit_small_12_p16_224`  |
-| XCiT-M12       | [link]()   | `xcit_medium_12_p16_224` |
-| XCiT-L12       | [link]()   | `xcit_large_12_p16_224`  |
-| ConvNeXt-T     | [link]()   | `convnext_tiny`          |
-| GELU ResNet-50 | [link]()   | `resnet_50_gelu`         |
+| Model          | AutoAttack accuracy | Clean accuracy | Checkpoint | Model name               |
+|----------------|---------------------|----------------|------------|--------------------------|
+| XCiT-S12       |                     |                | [link]()   | `xcit_small_12_p16_224`  |
+| XCiT-M12       |                     |                | [link]()   | `xcit_medium_12_p16_224` |
+| XCiT-L12       |                     |                | [link]()   | `xcit_large_12_p16_224`  |
+| ConvNeXt-T     |                     |                | [link]()   | `convnext_tiny`          |
+| GELU ResNet-50 |                     |                | [link]()   | `resnet_50_gelu`         |
 
 ### CIFAR-10
 
-| Model     | Checkpoint | Model name             |
-|-----------|------------|------------------------|
-| XCiT-S12  | [link]()   | `xcit_small_12_p4_32`  |
-| XCiT-M12  | [link]()   | `xcit_medium_12_p4_32` |
-| XCiT-L12  | [link]()   | `xcit_large_12_4_32`   |
-| ResNet-50 | [link]()   | `resnet_50_32`         |
+| Model     | AutoAttack accuracy | Clean accuracy | Checkpoint | Model name             |
+|-----------|---------------------|----------------|------------|------------------------|
+| XCiT-S12  |                     |                | [link]()   | `xcit_small_12_p4_32`  |
+| XCiT-M12  |                     |                | [link]()   | `xcit_medium_12_p4_32` |
+| XCiT-L12  |                     |                | [link]()   | `xcit_large_12_4_32`   |
+| ResNet-50 |                     |                | [link]()   | `resnet_50_32`         |
 
 ### CIFAR-100
 
-| Model     | Checkpoint | Model name             |
-|-----------|------------|------------------------|
-| XCiT-S12  | [link]()   | `xcit_small_12_p4_32`  |
-| XCiT-M12  | [link]()   | `xcit_medium_12_p4_32` |
-| XCiT-L12  | [link]()   | `xcit_large_12_4_32`   |
-| ResNet-50 | [link]()   | `resnet_50_32`         |
+| Model     | AutoAttack accuracy | Clean accuracy | Checkpoint | Model name             |
+|-----------|---------------------|----------------|------------|------------------------|
+| XCiT-S12  |                     |                | [link]()   | `xcit_small_12_p4_32`  |
+| XCiT-M12  |                     |                | [link]()   | `xcit_medium_12_p4_32` |
+| XCiT-L12  |                     |                | [link]()   | `xcit_large_12_4_32`   |
+| ResNet-50 |                     |                | [link]()   | `resnet_50_32`         |
 
 ### Oxford Flowers
 
-| Model     | Checkpoint | Model name               |
-|-----------|------------|--------------------------|
-| XCiT-S12  | [link]()   | `xcit_small_12_p12_224`  |
-| XCiT-M12  | [link]()   | `xcit_medium_12_p12_224` |
-| XCiT-L12  | [link]()   | `xcit_large_12_p12_224`  |
-| ResNet-50 | [link]()   | `resnet_50`              |
+| Model     | AutoAttack accuracy | Clean accuracy | Checkpoint | Model name               |
+|-----------|---------------------|----------------|------------|--------------------------|
+| XCiT-S12  |                     |                | [link]()   | `xcit_small_12_p12_224`  |
+| XCiT-M12  |                     |                | [link]()   | `xcit_medium_12_p12_224` |
+| XCiT-L12  |                     |                | [link]()   | `xcit_large_12_p12_224`  |
+| ResNet-50 |                     |                | [link]()   | `resnet_50`              |
 
 ### Caltech101
 
-| Model     | Checkpoint | Model name               |
-|-----------|------------|--------------------------|
-| XCiT-S12  | [link]()   | `xcit_small_12_p12_224`  |
-| XCiT-M12  | [link]()   | `xcit_medium_12_p12_224` |
-| XCiT-L12  | [link]()   | `xcit_large_12_p12_224`  |
-| ResNet-50 | [link]()   | `resnet_50`              |
+| Model     | AutoAttack accuracy | Clean accuracy | Checkpoint | Model name               |
+|-----------|---------------------|----------------|------------|--------------------------|
+| XCiT-S12  |                     |                | [link]()   | `xcit_small_12_p12_224`  |
+| XCiT-M12  |                     |                | [link]()   | `xcit_medium_12_p12_224` |
+| XCiT-L12  |                     |                | [link]()   | `xcit_large_12_p12_224`  |
+| ResNet-50 |                     |                | [link]()   | `resnet_50`              |
 
 ## Validation
 
