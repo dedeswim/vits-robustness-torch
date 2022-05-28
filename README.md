@@ -1,6 +1,8 @@
 # Adversarially Robust Vision Transformers
 
-Repository for the Adversarially Robust Vision Transformers paper.
+Repository for the *Adversarially Robust Vision Transformers* paper. It contains both the code and the checkpoints of 22 models from the paper relative to 4 different datasets.
+
+## Abstract
 
 ## Pre-requisites
 
@@ -26,13 +28,7 @@ To log the results to W&B it is enough to add the flag `--log-wandb`. The W&B ex
 <details>
 
 ```bash
-DATA_DIR=... \ # Location of TFDS datasets
-DATASET=tfds/imagenet2012 \
-MODEL=xcit_small_12_p16_224 \ # or xcit_medium_12_p16_224 or convnext_tiny
-EXPERIMENT=... \ # Experiment name for logging and directory creation
-OUTPUT=... \ # Where the results should be logged
-CONFIG=configs/xcit-adv-training.yaml \
-python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --experiment $EXPERIMENT --output $OUTPUT --model $MODEL --config $CONFIG
+python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --experiment $EXPERIMENT --output $OUTPUT --model $MODEL --config configs/xcit-adv-training.yaml
 ```
 
 </details>
@@ -42,13 +38,7 @@ python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --exp
 <details>
 
 ```bash
-DATA_DIR=... \ # Location of TFDS datasets
-DATASET=tfds/imagenet2012 \
-MODEL=xcit_large_12_p16_224 \
-EXPERIMENT=... \ # Experiment name for logging and directory creation
-OUTPUT=... \ # Where the results should be logged
-CONFIG=configs/xcit-adv-training.yaml \
-python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --experiment $EXPERIMENT --output $OUTPUT --model $MODEL --config $CONFIG --attack-steps 2
+python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --experiment $EXPERIMENT --output $OUTPUT --model $MODEL --config configs/xcit-adv-training.yaml --attack-steps 2
 ```
 
 </details>
@@ -58,13 +48,7 @@ python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --exp
 <details>
 
 ```bash
-DATA_DIR=... \ # Location of TFDS datasets
-DATASET=tfds/imagenet2012 \
-MODEL=xcit_small_12_p16_224 \ # or any other model here
-EXPERIMENT=... \ # Experiment name for logging and directory creation
-OUTPUT=... \ # Where the results should be logged
-CONFIG=configs/xcit-adv-training.yaml \
-python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --experiment $EXPERIMENT --output $OUTPUT --model $MODEL --config $CONFIG --attack-steps 2 --attack-eps 8
+python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --experiment $EXPERIMENT --output $OUTPUT --model $MODEL --config configs/xcit-adv-training.yaml --attack-steps 2 --attack-eps 8
 ```
 
 </details>
@@ -74,14 +58,7 @@ python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --exp
 <details>
 
 ```bash
-DATA_DIR=... \ # Location of TFDS datasets
-DATASET=tfds/caltech_101 \ # or oxford_flowers_102
-MODEL=xcit_small_12_p16_224 \ # or any other model here
-EXPERIMENT=... \ # Experiment name for logging and directory creation
-OUTPUT=... \ # Where the results should be logged
-CHECKPOINT=... \ # Path of the pre-trained checkpoint to fine-tune
-CONFIG=configs/xcit-adv-finetuning-hi-res.yaml \
-python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --experiment $EXPERIMENT --output $OUTPUT --model $MODEL --config $CONFIG --finetune $CHECKPOINT
+python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --experiment $EXPERIMENT --output $OUTPUT --model $MODEL --config configs/xcit-adv-finetuning-hi-res.yaml --finetune $CHECKPOINT
 ```
 
 </details>
@@ -92,14 +69,7 @@ python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --exp
 <details>
 
 ```bash
-DATA_DIR=... \ # Location of TFDS datsets
-DATASET=tfds/caltech_101 \ # or oxford_flowers_102
-MODEL=xcit_small_12_p16_224 \ # or any other model here
-EXPERIMENT=... \ # Experiment name for logging and directory creation
-OUTPUT=... \ # Where the results should be logged
-CHECKPOINT=... \ # Path of the pre-trained checkpoint to fine-tune
-CONFIG=configs/xcit-adv-finetuning-hi-res.yaml \
-python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --experiment $EXPERIMENT --output $OUTPUT --model $MODEL --config $CONFIG --finetune $CHECKPOINT --mean 0.5 0.5 0.5 --std 0.5 0.5 0.5 --normalize-model
+python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --experiment $EXPERIMENT --output $OUTPUT --model $MODEL --config configs/xcit-adv-finetuning-hi-res.yaml --finetune $CHECKPOINT --mean 0.5 0.5 0.5 --std 0.5 0.5 0.5 --normalize-model
 ```
 
 </details>
@@ -118,14 +88,7 @@ python3 -c "from torchvision.datasets import CIFAR100; CIFAR100('<download_dir>'
 Then the command to start the training is:
 
 ```bash
-DATA_DIR=... \ # Location of TFDS's ImageNet
-DATASET=torch/cifar10 \ # or oxford_flowers_102
-MODEL=xcit_small_12_p4_32 \ # or any other model here
-EXPERIMENT=... \ # Experiment name for logging and directory creation
-OUTPUT=... \ # Where the results should be logged
-CHECKPOINT=... \ # Path of the pre-trained checkpoint to fine-tune
-CONFIG=configs/xcit-adv-finetuning.yaml \
-python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --experiment $EXPERIMENT --output $OUTPUT --model $MODEL --config $CONFIG --finetune $CHECKPOINT --mean DATASET_MEAN --std DATASET_STD --normalize-model
+python launch_xla.py --num-devices 8 train.py $DATA_DIR --dataset $DATASET --experiment $EXPERIMENT --output $OUTPUT --model $MODEL --config configs/xcit-adv-finetuning.yaml --finetune $CHECKPOINT --mean DATASET_MEAN --std DATASET_STD --normalize-model
 ```
 
 The models are different, as we need to adapt the patch embedding layer to work on smaller resolutions. In particular, the models are:
@@ -146,55 +109,55 @@ All the checkpoints can be found in [this](https://drive.google.com/drive/folder
 
 #### Epsilon 4
 
-| Model          | AutoAttack accuracy | Clean accuracy |                                         Checkpoint                                         | Model name               |
-| -------------- | :-----------------: | :------------: | :----------------------------------------------------------------------------------------: | ------------------------ |
-| XCiT-S12       |        41.78        |     72.34      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-s12-ImageNet-eps-4.pth.tar) | `xcit_small_12_p16_224`  |
-| XCiT-M12       |        45.24        |     74.04      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-m12-ImageNet-eps-4.pth.tar) | `xcit_medium_12_p16_224` |
-| XCiT-L12       |        47.60        |     73.76      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-l12-ImageNet-eps-4.pth.tar) | `xcit_large_12_p16_224`  |
+| Model          | AutoAttack accuracy | Clean accuracy |                                                      Checkpoint                                                       | Model name               |
+| -------------- | :-----------------: | :------------: | :-------------------------------------------------------------------------------------------------------------------: | ------------------------ |
+| XCiT-S12       |        41.78        |     72.34      |   [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-s12-ImageNet-eps-4.pth.tar)    | `xcit_small_12_p16_224`  |
+| XCiT-M12       |        45.24        |     74.04      |   [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-m12-ImageNet-eps-4.pth.tar)    | `xcit_medium_12_p16_224` |
+| XCiT-L12       |        47.60        |     73.76      |   [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-l12-ImageNet-eps-4.pth.tar)    | `xcit_large_12_p16_224`  |
 | ConvNeXt-T     |        44.44        |     71.64      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/convnext_tiny-ImageNet-eps-4.pth.tar) | `convnext_tiny`          |
 | GELU ResNet-50 |        35.51        |     67.38      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/resnet50_gelu-ImageNet-eps-4.pth.tar) | `resnet_50_gelu`         |
 
 #### Epsilon 8
 
-| Model          | AutoAttack accuracy | Clean accuracy |                                         Checkpoint                                         | Model name               |
-| -------------- | :-----------------: | :------------: | :----------------------------------------------------------------------------------------: | ------------------------ |
-| XCiT-S12       |        25.00        |     63.46      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-s12-ImageNet-eps-8.pth.tar) | `xcit_small_12_p16_224`  |
-| XCiT-M12       |        26.58        |     67.80      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-m12-ImageNet-eps-8.pth.tar) | `xcit_medium_12_p16_224` |
-| XCiT-L12       |        28.74        |     69.24      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-l12-ImageNet-eps-8.pth.tar) | `xcit_large_12_p16_224`  |
+| Model          | AutoAttack accuracy | Clean accuracy |                                                      Checkpoint                                                       | Model name               |
+| -------------- | :-----------------: | :------------: | :-------------------------------------------------------------------------------------------------------------------: | ------------------------ |
+| XCiT-S12       |        25.00        |     63.46      |   [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-s12-ImageNet-eps-8.pth.tar)    | `xcit_small_12_p16_224`  |
+| XCiT-M12       |        26.58        |     67.80      |   [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-m12-ImageNet-eps-8.pth.tar)    | `xcit_medium_12_p16_224` |
+| XCiT-L12       |        28.74        |     69.24      |   [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-l12-ImageNet-eps-8.pth.tar)    | `xcit_large_12_p16_224`  |
 | ConvNeXt-T     |        27.98        |     65.96      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/convnext_tiny-ImageNet-eps-8.pth.tar) | `convnext_tiny`          |
 | GELU ResNet-50 |        17.15        |     58.08      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/resnet50_gelu-ImageNet-eps-8.pth.tar) | `resnet_50_gelu`         |
 
 ### CIFAR-10
 
-| Model     | AutoAttack accuracy | Clean accuracy |                                         Checkpoint                                         | Model name             |
-| --------- | :-----------------: | :------------: | :----------------------------------------------------------------------------------------: | ---------------------- |
-| XCiT-S12  |        56.14        |     90.06      | [link](https://drive.google.com/file/d/1hu7Z4LhR4OOL3gmbHuT9ljRTSKIxGbPs/view?usp=sharing) | `xcit_small_12_p4_32`  |
-| XCiT-M12  |        57.27        |     91.30      | [link](https://drive.google.com/file/d/1yan2zUNA6s6zDc0MOkfgCr3ctjWcQEI0/view?usp=sharing) | `xcit_medium_12_p4_32` |
-| XCiT-L12  |        57.58        |     91.73      | [link](https://drive.google.com/file/d/1NWI77UiSD5nOx6dQgvIyPRYQof-8ke-y/view?usp=sharing) | `xcit_large_12_4_32`   |
-| ResNet-50 |        41.56        |     84.80      | [link](https://drive.google.com/file/d/1hAHZutBd7ttO9tz30k1swc6nhyqpJqdF/view?usp=sharing) | `resnet_50_32`         |
+| Model     | AutoAttack accuracy | Clean accuracy |                                                 Checkpoint                                                  | Model name             |
+| --------- | :-----------------: | :------------: | :---------------------------------------------------------------------------------------------------------: | ---------------------- |
+| XCiT-S12  |        56.14        |     90.06      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-s12-CIFAR-10.pth.tar)  | `xcit_small_12_p4_32`  |
+| XCiT-M12  |        57.27        |     91.30      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-m12-CIFAR-10.pth.tar)  | `xcit_medium_12_p4_32` |
+| XCiT-L12  |        57.58        |     91.73      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-l12-CIFAR-10.pth.tar)  | `xcit_large_12_4_32`   |
+| ResNet-50 |        41.56        |     84.80      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/resnet_50-CIFAR-10.pth.tar) | `resnet_50_32`         |
 
 ### CIFAR-100
 
-| Model     | AutoAttack accuracy | Clean accuracy |                                         Checkpoint                                         | Model name             |
-| --------- | :-----------------: | :------------: | :----------------------------------------------------------------------------------------: | ---------------------- |
-| XCiT-S12  |        32.19        |     67.34      | [link](https://drive.google.com/file/d/13vFwvVWEESfWWpoicPhD08HtzYszeyUr/view?usp=sharing) | `xcit_small_12_p4_32`  |
-| XCiT-M12  |        34.21        |     69.21      | [link](https://drive.google.com/file/d/1YXnGsY3yvvaMucMwyfhDHIUchOSungj2/view?usp=sharing) | `xcit_medium_12_p4_32` |
-| XCiT-L12  |        35.08        |     70.76      | [link](https://drive.google.com/file/d/1Sg4BQ5pBdlR_M41VDxOlYxCl1_It8elL/view?usp=sharing) | `xcit_large_12_4_32`   |
-| ResNet-50 |        22.01        |     61.28      | [link](https://drive.google.com/file/d/1RweWjpjMyyhF8P1JdjuDc09F6wp4TsF9/view?usp=sharing) | `resnet_50_32`         |
+| Model     | AutoAttack accuracy | Clean accuracy |                                                  Checkpoint                                                  | Model name             |
+| --------- | :-----------------: | :------------: | :----------------------------------------------------------------------------------------------------------: | ---------------------- |
+| XCiT-S12  |        32.19        |     67.34      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-s12-CIFAR-100.pth.tar)  | `xcit_small_12_p4_32`  |
+| XCiT-M12  |        34.21        |     69.21      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-m12-CIFAR-100.pth.tar)  | `xcit_medium_12_p4_32` |
+| XCiT-L12  |        35.08        |     70.76      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-l12-CIFAR-100.pth.tar)  | `xcit_large_12_4_32`   |
+| ResNet-50 |        22.01        |     61.28      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/resnet_50-CIFAR-100.pth.tar) | `resnet_50_32`         |
 
 ### Oxford Flowers
 
-| Model     | AutoAttack accuracy | Clean accuracy |                                         Checkpoint                                         | Model name              |
-| --------- | :-----------------: | :------------: | :----------------------------------------------------------------------------------------: | ----------------------- |
-| XCiT-S12  |        47.91        |     82.86      | [link](https://drive.google.com/file/d/1XHCbdj5vXUybofNmNd5a2LGQeVxITCpE/view?usp=sharing) | `xcit_small_12_p12_224` |
-| ResNet-50 |        32.75        |     74.51      | [link](https://drive.google.com/file/d/1y41kNkiSwNPNs61QZhm9Cy0arBkeKjA0/view?usp=sharing) | `resnet_50`             |
+| Model     | AutoAttack accuracy | Clean accuracy |                                                    Checkpoint                                                     | Model name              |
+| --------- | :-----------------: | :------------: | :---------------------------------------------------------------------------------------------------------------: | ----------------------- |
+| XCiT-S12  |        47.91        |     82.86      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-s12-Oxford.Flowers.pth.tar)  | `xcit_small_12_p12_224` |
+| ResNet-50 |        32.75        |     74.51      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/resnet_50-Oxford.Flowers.pth.tar) | `resnet_50`             |
 
 ### Caltech101
 
-| Model     | AutoAttack accuracy | Clean accuracy |                                         Checkpoint                                         | Model name              |
-| --------- | :-----------------: | :------------: | :----------------------------------------------------------------------------------------: | ----------------------- |
-| XCiT-S12  |        61.74        |     87.59      | [link](https://drive.google.com/file/d/1l_wdzgXI5lE6RVOtZvIzaPOMfoL6a1GJ/view?usp=sharing) | `xcit_small_12_p12_224` |
-| ResNet-50 |        34.49        |     81.38      | [link](https://drive.google.com/file/d/1sNwwZ4gIP7yIwv87RSaWu70duAUotruW/view?usp=sharing) | `resnet_50`             |
+| Model     | AutoAttack accuracy | Clean accuracy |                                                  Checkpoint                                                   | Model name              |
+| --------- | :-----------------: | :------------: | :-----------------------------------------------------------------------------------------------------------: | ----------------------- |
+| XCiT-S12  |        61.74        |     87.59      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-s12-Caltech101.pth.tar)  | `xcit_small_12_p12_224` |
+| ResNet-50 |        34.49        |     81.38      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/resnet_50-Caltech101.pth.tar) | `resnet_50`             |
 
 ## Validation
 
@@ -207,15 +170,10 @@ For validating using full AA models trained on ImageNet, CIFAR-10 and CIFAR-100 
 This script will run the full AutoAttack using RobustBench's interface.
 
 ```bash
-DATA_DIR=~/imagenet \ # Location of the data as a torchvision dataset
-DATASET=imagenet \ # or cifar10 or cifar100
-MODEL=xcit_small_12_p16_224 \ # Or any other model
-CHECKPOINT=https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-s12-ImageNet-eps-4.pth.tar \ # The checkpoint to validate
-EPS=8 \ # The epsilon to use to evaluate
-python3 validate_robustbench.py $DATA_DIR --dataset $DATASET --model $MODEL --batch-size 1024 --checkpoint $CHECKPOINT --attack-eps $EPS
+python3 validate_robustbench.py --data-dir $DATA_DIR --dataset $DATASET --model $MODEL --batch-size 1024 --checkpoint $CHECKPOINT --eps $EPS
 ```
 
-If the model has been trained using a specific mean and std, then they should be specified with the `--mean` and `--std` flags, similarly to training. Otherwise the `--no-normalize` flag sould be specified.
+If the model has been trained using a specific mean and std, then they should be specified with the `--mean` and `--std` flags, similarly to training.
 
 </details>
 
@@ -226,12 +184,6 @@ Do not use this script to run APGD-CE or AutoAttack on TPU (and XLA in general),
 <details>
 
 ```bash
-DATA_DIR=... \ # Location of the TFDS data or the torch data
-DATASET=tfds/caltech101 \ # or any other dataset, both torch and tfds
-MODEL=xcit_small_12_p16_224 \ # Or any other model
-CHECKPOINT=... \ # The checkpoint to validate
-EPS=8 \ # The epsilon to use to evaluate
-ATTACK=autoattack \ # or apgd-ce or pgd
 python3 validate.py $DATA_DIR --dataset $DATASET --log-freq 1 --model $MODEL --checkpoint $CHECKPOINT --mean <mean> --std <std> --attack $ATTACK --attack-eps $EPS
 ```
 
@@ -280,7 +232,3 @@ In order to run the unit tests, install pytest via `pip install pytest`, and run
 ```bash
 python -m pytest .
 ```
-
-## Acknowledgements
-
-Research supported with Cloud TPUs from Google's TPU Research Cloud (TRC), which granted extensive hardware support with both TPUv3 and TPUv4 devices.
