@@ -96,6 +96,7 @@ The models are different, as we need to adapt the patch embedding layer to work 
 - XCiT-S: `xcit_small_12_p4_32`
 - XCiT-M: `xcit_medium_12_p4_32`
 - XCiT-L: `xcit_large_12_p4_32`
+- ResNet-50: `resnet_50_32`
 
 Moreover, for CIFAR10 you should specify `--mean 0.4914 0.4822 0.4465 --std 0.2471 0.2435 0.2616`, and for CIFAR100 you should specify `--mean 0.5071 0.4867 0.4408 --std 0.2675 0.2565 0.2761`.
 
