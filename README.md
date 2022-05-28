@@ -148,21 +148,21 @@ All the checkpoints can be found in [this](https://drive.google.com/drive/folder
 
 | Model          | AutoAttack accuracy | Clean accuracy |                                         Checkpoint                                         | Model name               |
 | -------------- | :-----------------: | :------------: | :----------------------------------------------------------------------------------------: | ------------------------ |
-| XCiT-S12       |        41.78        |     72.34      | [link](https://drive.google.com/file/d/1wbx18o4l_ECyEYo9eyHnIYPlSNRMpO-D/view?usp=sharing) | `xcit_small_12_p16_224`  |
-| XCiT-M12       |        45.24        |     74.04      | [link](https://drive.google.com/file/d/184utgGfgh6m_GDBe_mETWf0HmxksGCHH/view?usp=sharing) | `xcit_medium_12_p16_224` |
-| XCiT-L12       |        47.60        |     73.76      | [link](https://drive.google.com/file/d/154l0cWMtBMK64yG7gn3fzoTQSATHR8H5/view?usp=sharing) | `xcit_large_12_p16_224`  |
-| ConvNeXt-T     |        44.44        |     71.64      | [link](https://drive.google.com/file/d/1EAMVH8e67cXIFPlmK-JFFK0hzuONOWyq/view?usp=sharing) | `convnext_tiny`          |
-| GELU ResNet-50 |        35.51        |     67.38      | [link](https://drive.google.com/file/d/1akb4N1B5mmesZsYGIhhDwtO-3iiKu5tb/view?usp=sharing) | `resnet_50_gelu`         |
+| XCiT-S12       |        41.78        |     72.34      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-s12-ImageNet-eps-4.pth.tar) | `xcit_small_12_p16_224`  |
+| XCiT-M12       |        45.24        |     74.04      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-m12-ImageNet-eps-4.pth.tar) | `xcit_medium_12_p16_224` |
+| XCiT-L12       |        47.60        |     73.76      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-l12-ImageNet-eps-4.pth.tar) | `xcit_large_12_p16_224`  |
+| ConvNeXt-T     |        44.44        |     71.64      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/convnext_tiny-ImageNet-eps-4.pth.tar) | `convnext_tiny`          |
+| GELU ResNet-50 |        35.51        |     67.38      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/resnet50_gelu-ImageNet-eps-4.pth.tar) | `resnet_50_gelu`         |
 
 #### Epsilon 8
 
 | Model          | AutoAttack accuracy | Clean accuracy |                                         Checkpoint                                         | Model name               |
 | -------------- | :-----------------: | :------------: | :----------------------------------------------------------------------------------------: | ------------------------ |
-| XCiT-S12       |        25.00        |     63.46      | [link](https://drive.google.com/file/d/1lFcXruv6lUz9XqxvXTzyA_7YLprPZq2q/view?usp=sharing) | `xcit_small_12_p16_224`  |
-| XCiT-M12       |        26.58        |     67.80      | [link](https://drive.google.com/file/d/1Nw86jzlXLEGbFQZtd39i0Mampwh2ZAFv/view?usp=sharing) | `xcit_medium_12_p16_224` |
-| XCiT-L12       |        28.74        |     69.24      | [link](https://drive.google.com/file/d/1UPDBDkirsxUGBEDrznJrTZ0JR173nMlv/view?usp=sharing) | `xcit_large_12_p16_224`  |
-| ConvNeXt-T     |        27.98        |     65.96      | [link](https://drive.google.com/file/d/1JyRn30kY0NPUGEigaOrGLDIkIC_V932W/view?usp=sharing) | `convnext_tiny`          |
-| GELU ResNet-50 |        17.15        |     58.08      | [link](https://drive.google.com/file/d/16XlIPBlPA2xlYb5D4BOoNEgYl5UwyW7b/view?usp=sharing) | `resnet_50_gelu`         |
+| XCiT-S12       |        25.00        |     63.46      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-s12-ImageNet-eps-8.pth.tar) | `xcit_small_12_p16_224`  |
+| XCiT-M12       |        26.58        |     67.80      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-m12-ImageNet-eps-8.pth.tar) | `xcit_medium_12_p16_224` |
+| XCiT-L12       |        28.74        |     69.24      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-l12-ImageNet-eps-8.pth.tar) | `xcit_large_12_p16_224`  |
+| ConvNeXt-T     |        27.98        |     65.96      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/convnext_tiny-ImageNet-eps-8.pth.tar) | `convnext_tiny`          |
+| GELU ResNet-50 |        17.15        |     58.08      | [link](https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/resnet50_gelu-ImageNet-eps-8.pth.tar) | `resnet_50_gelu`         |
 
 ### CIFAR-10
 
@@ -207,10 +207,10 @@ For validating using full AA models trained on ImageNet, CIFAR-10 and CIFAR-100 
 This script will run the full AutoAttack using RobustBench's interface.
 
 ```bash
-DATA_DIR=... \ # Location of the data as a torchvision dataset
+DATA_DIR=~/imagenet \ # Location of the data as a torchvision dataset
 DATASET=imagenet \ # or cifar10 or cifar100
-MODEL=xcit_nano_12_p16_224 \ # Or any other model
-CHECKPOINT=... \ # The checkpoint to validate
+MODEL=xcit_small_12_p16_224 \ # Or any other model
+CHECKPOINT=https://github.com/dedeswim/vits-robustness-torch/releases/download/v1.0/xcit-s12-ImageNet-eps-4.pth.tar \ # The checkpoint to validate
 EPS=8 \ # The epsilon to use to evaluate
 python3 validate_robustbench.py $DATA_DIR --dataset $DATASET --model $MODEL --batch-size 1024 --checkpoint $CHECKPOINT --attack-eps $EPS
 ```
@@ -228,11 +228,10 @@ Do not use this script to run APGD-CE or AutoAttack on TPU (and XLA in general),
 ```bash
 DATA_DIR=... \ # Location of the TFDS data or the torch data
 DATASET=tfds/caltech101 \ # or any other dataset, both torch and tfds
-MODEL=xcit_nano_12_p16_224 \ # Or any other model
+MODEL=xcit_small_12_p16_224 \ # Or any other model
 CHECKPOINT=... \ # The checkpoint to validate
 EPS=8 \ # The epsilon to use to evaluate
 ATTACK=autoattack \ # or apgd-ce or pgd
-EPS=8 \
 python3 validate.py $DATA_DIR --dataset $DATASET --log-freq 1 --model $MODEL --checkpoint $CHECKPOINT --mean <mean> --std <std> --attack $ATTACK --attack-eps $EPS
 ```
 
@@ -242,7 +241,20 @@ If the model has been trained using a specific mean and std, then they should be
 
 ## Attack effectiveness experiment
 
-To reproduce the attack effectiveness experiment, you can run the `attack_effectiveness.py` script. The results are written to a CSV file created in the same folder as that of the checkpoints that are tested. We process the CSV files generated with the [attack_effectiveness.ipynb](notebooks/attack_effectiveness.ipynb) notebook.
+To reproduce the attack effectiveness experiment, you can run the [`attack_effectiveness.py`](attack_effectiveness.py) script. The results are written to a CSV file created in the same folder as that of the checkpoints that are tested. We process the CSV files generated with the [attack_effectiveness.ipynb](notebooks/attack_effectiveness.ipynb) notebook. For instance, the validation of XCiT-S12 checkpoints, assuming that in the folder `checkpoints` the checkpoints are in the form `checkpoint-{epoch}-pth.tar`, the script can be launched as
+
+```bash
+DATA_DIR=... \ # Location of the TFDS data or the torch data
+DATASET=tfds/robustbench_image_net \ # or any other dataset, both torch and tfds
+MODEL=xcit_small_12_p16_224 \ # Or any other model
+CHECKPOINTS_DIR=checkpoints \ # The checkpoint to validate
+EPS=8 \ # The epsilon to use to evaluate
+python3 attack_effectiveness.py $DATA_DIR --dataset $DATASET --model $MODEL --checkpoints-dir $CHECKPOINTS_DIR --no-normalize
+```
+
+This will run PGD with 1, 2, 5, 10, and 200 steps, for the checkpoints at the epochs 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, with three different seeds. The results will be written in `checkpoints/summary.csv`.
+
+The checkpoints for the models we test with this experiments (XCiT-S12, ResNet-50 GELU, and ConvNeXt-T) can be found at [this](https://drive.google.com/drive/u/0/folders/1PhGnEhM5nVG_L23R6VZqiLM-iwKHbWA8) Google Drive link.
 
 ## Code
 
