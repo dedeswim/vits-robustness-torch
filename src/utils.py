@@ -52,10 +52,8 @@ def load_model_from_gcs(checkpoint_path: str, model_name: str, **kwargs):
 
 
 def load_state_dict_from_gcs(model: nn.Module, checkpoint_path: str):
-    with tempfile.TemporaryDirectory() as dst:
-        local_checkpoint_path = os.path.join(dst, os.path.basename(checkpoint_path))
-        tf.io.gfile.copy(checkpoint_path, local_checkpoint_path)
-        model.load_state_dict(torch.load(local_checkpoint_path)["model"])
+    with tf.io.gfile.GFile(checkpoint_path, "rb") as f:
+        model.load_state_dict(torch.load(f)["model"])
     return model
 
 
