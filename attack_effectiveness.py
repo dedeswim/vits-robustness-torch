@@ -16,7 +16,7 @@ _logger = logging.getLogger('validate')
 parser.add_argument('--steps-to-try',
                     type=int,
                     nargs='+',
-                    default=(1, 2, 10, 100),
+                    default=(1, 2, 5, 10, 200),
                     metavar='X Y Z',
                     help='The attack steps to try')
 parser.add_argument('--run-apgd-ce', action='store_true', default=False, help='Run also APGD-CE')
@@ -28,11 +28,14 @@ parser.add_argument('--checkpoints-dir',
 parser.add_argument('--epochs-to-try',
                     type=int,
                     nargs='+',
-                    default=[],
+                    default=(9, 19, 29, 39, 49, 59, 69, 79, 89, 99),
                     metavar='X Y Z',
                     help='The attack steps to try')
-parser.add_argument('--seeds', type=int, nargs='+', default=[0], metavar='X Y Z', help='The seeds to try')
-parser.add_argument('--validate-standard', action='store_true', default=False, help='Validate also the standard model')
+parser.add_argument('--seeds', type=int, nargs='+', default=(0, 1, 2), metavar='X Y Z', help='The seeds to try')
+parser.add_argument('--validate-standard',
+                    action='store_true',
+                    default=False,
+                    help='Validate also the standard model')
 
 
 def validate_epoch(args, checkpoints_dir: Path, epoch: int, steps_to_try: List[int], seeds: List[int],
@@ -95,10 +98,12 @@ def main():
                              class_map=args.class_map)
 
     for epoch in args.epochs_to_try:
-        validate_epoch(args, checkpoints_dir, epoch, steps_to_try, seeds, run_apgd_ce, csv_writer, dev_env, dataset)
+        validate_epoch(args, checkpoints_dir, epoch, steps_to_try, seeds, run_apgd_ce, csv_writer, dev_env,
+                       dataset)
 
     if args.validate_standard:
-        validate_epoch(args, checkpoints_dir, "standard", steps_to_try, seeds, run_apgd_ce, csv_writer, dev_env, dataset)
+        validate_epoch(args, checkpoints_dir, "standard", steps_to_try, seeds, run_apgd_ce, csv_writer,
+                       dev_env, dataset)
 
 
 def _mp_entry(*args):

@@ -1,3 +1,13 @@
+"""Functions and classes for adversarial training and for generating adversarial examples.
+
+The way the attacks are instantiated is inspired by DeepMind's repository for adversarial robustness,
+which is implemented in JAX, and can be found here:
+https://github.com/deepmind/deepmind-research/tree/master/adversarial_robustness/.
+
+The original license can be found here:
+https://github.com/deepmind/deepmind-research/blob/master/LICENSE
+"""
+
 import functools
 import math
 from dataclasses import dataclass

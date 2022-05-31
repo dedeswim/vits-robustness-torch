@@ -1,9 +1,13 @@
-"""
-Adapatation of (pre-elastic) torch.distributed.launch for pytorch xla.
+"""Adapatation of (pre-elastic) torch.distributed.launch for pytorch xla.
 
 `torch.distributed.launch` is a module that spawns up multiple distributed
 training processes on each of the training nodes.
 
+From Ross Wightman's PyTorch Image Models, which can be found at
+https://github.com/rwightman/pytorch-image-models/.
+
+The original license can be found at this link:
+https://github.com/rwightman/pytorch-image-models/blob/master/LICENSE
 """
 
 import importlib

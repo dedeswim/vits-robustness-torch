@@ -201,6 +201,10 @@ def write_wandb_info(notes: str, output_dir: str, wandb_run):
 
 
 def interpolate_position_embeddings(model: nn.Module, checkpoint_model: Dict[str, Any]):
+    """Interpolates the position embedding layer for different resolutions.
+    
+    Adapted from DeiT's original repo: https://github.com/facebookresearch/deit.
+    The original license can be found here: https://github.com/facebookresearch/deit/blob/main/LICENSE"""
     pos_embed_checkpoint = checkpoint_model['pos_embed']
     embedding_size = pos_embed_checkpoint.shape[-1]
     num_patches = model.patch_embed.num_patches

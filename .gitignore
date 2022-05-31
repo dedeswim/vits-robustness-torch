@@ -283,3 +283,4 @@ checkpoints
 notebooks/outputs
 .tensorboard/
 tensorboard
+drive_checkpoints/

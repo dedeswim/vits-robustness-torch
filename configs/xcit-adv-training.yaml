@@ -9,7 +9,7 @@ attack_lr: null
 attack_norm: linf
 attack_steps: 1
 amp: false
-aug_splits: 3
+aug_splits: 0
 batch_size: 64
 bce_loss: false
 bce_target_thresh: null
@@ -109,7 +109,7 @@ use_multi_epochs_loader: false
 val_split: validation
 validation_batch_size: null
 vflip: 0.0
-warmup_epochs: 5
+warmup_epochs: 10
 warmup_lr: 1.0e-6
 weight_decay: 0.5
 workers: 4
