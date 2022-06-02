@@ -175,6 +175,12 @@ parser.add_argument('--sched',
                     metavar='SCHEDULER',
                     help='LR scheduler (default: "cosine"')
 parser.add_argument('--lr', type=float, default=0.1, metavar='LR', help='learning rate (default: 0.05)')
+parser.add_argument('--lr-base', type=float, default=0.1, metavar='LR',
+                    help='base learning rate: lr = lr_base * global_batch_size / base_size')
+parser.add_argument('--lr-base-size', type=int, default=256, metavar='DIV',
+                    help='base learning rate batch size (divisor, default: 256).')
+parser.add_argument('--lr-base-scale', type=str, default='', metavar='SCALE',
+                    help='base learning rate vs batch_size scaling ("linear", "sqrt", based on opt if empty)')
 parser.add_argument('--lr-noise',
                     type=float,
                     nargs='+',
@@ -235,11 +241,9 @@ parser.add_argument('--start-epoch',
                     type=int,
                     metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('--decay-epochs',
-                    type=float,
-                    nargs='+',
-                    default=100,
-                    metavar='N',
+parser.add_argument('--decay-milestones', default=[30, 60], type=int, nargs='+', metavar="MILESTONES",
+                    help='list of decay epoch indices for multistep lr. must be increasing')
+parser.add_argument('--decay-epochs', type=float, default=100, metavar='N',
                     help='epoch interval to decay LR')
 parser.add_argument('--warmup-epochs',
                     type=int,

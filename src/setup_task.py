@@ -341,6 +341,19 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         assert args.aug_splits > 1
         model = convert_splitbn_model(model, max(args.aug_splits, 2))
 
+    if args.lr is None:
+        global_batch_size = args.batch_size * dev_env.world_size
+        batch_ratio = global_batch_size / args.lr_base_size
+        if not args.lr_base_scale:
+            on = args.opt.lower()
+            args.lr_base_scale = 'sqrt' if any([o in on for o in ('adam', 'lamb', 'adabelief')]) else 'linear'
+        if args.lr_base_scale == 'sqrt':
+            batch_ratio = batch_ratio ** 0.5
+        args.lr = args.lr_base * batch_ratio
+        if dev_env.primary:
+            _logger.info(f'Learning rate ({args.lr}) calculated from base learning rate ({args.lr_base}) '
+                         f'and global batch size ({global_batch_size}) with {args.lr_base_scale} scaling.')
+
     with tempfile.TemporaryDirectory() as dst:
         if args.resume is not None and args.resume.startswith("gs://"):
             resume_checkpoint_path = os.path.join(dst, os.path.basename(args.resume))
