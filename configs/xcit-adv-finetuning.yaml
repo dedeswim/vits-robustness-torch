@@ -61,8 +61,8 @@ local_rank: 0
 log_interval: 50
 log_wandb: false
 lr: null
-lr_base: 0.1
-lr_base_size: 128
+lr_base: 2.0e-4
+lr_base_size: 512
 lr_cycle_decay: 0.5
 lr_cycle_limit: 1
 lr_cycle_mul: 1.0
@@ -89,7 +89,7 @@ no_normalize: true
 no_resume_opt: false
 normalize_model: true
 num_classes: 10
-opt: sgd 
+opt: adamw 
 opt_betas: null
 opt_eps: 1.0e-08
 output: gs://robust-vits/
@@ -112,7 +112,7 @@ save_images: false
 scale:
 - 1.0
 - 1.0
-sched: multistep
+sched: cosine
 seed: 42
 smoothing: 0.0
 split_bn: false
@@ -133,5 +133,5 @@ validation_batch_size: null
 vflip: 0.0
 warmup_epochs: 5
 warmup_lr: 1.0e-06
-weight_decay: 5e-4
+weight_decay: 0.5
 workers: 4
