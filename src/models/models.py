@@ -14,7 +14,7 @@ default_cfgs = {
     'xcit_medium_12_p4_32': xcit._cfg(input_size=(3, 32, 32)),
     'xcit_large_12_p4_32': xcit._cfg(input_size=(3, 32, 32)),
     'resnet18_gelu': resnet._cfg(),
-    'resnet50_32': resnet._cfg(input_size=(3, 32, 32), interpolation='bicubic', crop_pct=1),
+    'resnet50_32': resnet._cfg(input_size=(3, 32, 32), interpolation='bicubic', crop_pct=1, pool_size=(4, 4)),
     'resnet50_gelu': resnet._cfg(interpolation='bicubic', crop_pct=0.95),
     'resnet152_gelu': resnet._cfg(interpolation='bicubic', crop_pct=0.95),
     'resnext152_32x8d': resnet._cfg(input_size=(3, 380, 380)),

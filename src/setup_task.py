@@ -22,7 +22,7 @@ from timm.data import AugCfg, AugMixDataset, MixupCfg, create_loader_v2, fetcher
 from timm.data.dataset_factory import create_dataset
 from timm.loss import (BinaryCrossEntropy, JsdCrossEntropy, LabelSmoothingCrossEntropy,
                        SoftTargetCrossEntropy)
-from timm.models import convert_splitbn_model, create_model, safe_model_name
+from timm.models import convert_splitbn_model, create_model, safe_model_name, xcit
 from timm.optim import optimizer_kwargs
 from timm.utils.model_ema import ModelEmaV2
 from timm.scheduler import create_scheduler
@@ -362,7 +362,10 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
 
         try:
             num_classes = args.num_classes
-            model.reset_classifier(num_classes=num_classes)
+            if isinstance(model, xcit.XCiT):
+                model.reset_classifier(num_classes=num_classes, global_pool='token')
+            else:
+                model.reset_classifier(num_classes=num_classes)
             _logger.info(f"Reset the classifier with {num_classes=}")
         except AttributeError:
             _logger.warn("Could not reset classifier on model")
