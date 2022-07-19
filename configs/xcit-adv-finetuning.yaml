@@ -10,7 +10,7 @@ attack_lr: null
 attack_norm: linf
 attack_steps: 10
 aug_splits: 0
-batch_size: 64 
+batch_size: 128
 bce_loss: false
 bce_target_thresh: null
 bn_eps: null
@@ -27,7 +27,10 @@ cutmix: 0.0
 cutmix_minmax: null
 data_dir: ~/torch_data
 dataset: torch/cifar10
-decay_epochs: 100
+decay_epochs: null
+decay_milestones:
+ - 10
+ - 15
 decay_rate: 0.1
 dist_bn: reduce
 drop: 0.0
@@ -57,7 +60,9 @@ keep_patch_embedding: true
 local_rank: 0
 log_interval: 50
 log_wandb: false
-lr: 2.0e-4
+lr: null
+lr_base: 0.1
+lr_base_size: 128
 lr_cycle_decay: 0.5
 lr_cycle_limit: 1
 lr_cycle_mul: 1.0
@@ -84,11 +89,11 @@ no_normalize: true
 no_resume_opt: false
 normalize_model: true
 num_classes: 10
-opt: adamw 
+opt: sgd 
 opt_betas: null
 opt_eps: 1.0e-08
 output: gs://robust-vits/
-pad: 2
+pad: 4
 patience_epochs: 10
 pin_mem: false
 pretrained: false
@@ -105,9 +110,9 @@ resplit: false
 resume: ''
 save_images: false
 scale:
-- 0.8
-- 1.2
-sched: cosine
+- 1.0
+- 1.0
+sched: multistep
 seed: 42
 smoothing: 0.0
 split_bn: false
@@ -128,5 +133,5 @@ validation_batch_size: null
 vflip: 0.0
 warmup_epochs: 5
 warmup_lr: 1.0e-06
-weight_decay: 0.5
+weight_decay: 5e-4
 workers: 4
