@@ -14,7 +14,6 @@ from dataclasses import replace
 from datetime import datetime
 from typing import Any, Dict, Tuple
 
-import tensorflow as tf
 import torch
 import torch.nn as nn
 import torch.utils.data as data
@@ -42,6 +41,8 @@ _logger = logging.getLogger('train')
 def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     data_config = resolve_data_config(vars(args), default_cfg=default_cfg, verbose=dev_env.primary)
     data_config['normalize'] = not (args.no_normalize or args.normalize_model)
+    data_config['pad'] = args.pad
+    data_config['rand_rotation'] = args.rand_rotation
 
     if args.combine_dataset is not None:
         train_combine_batch_size = int(args.batch_size * args.combined_dataset_ratio)
@@ -129,7 +130,8 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
         std=data_config['std'],
         aug=train_aug_cfg,
         normalize=data_config['normalize'],
-    )
+        rand_rotation=data_config['rand_rotation'],
+        pad=data_config['pad'])
 
     # if using PyTorch XLA and RandomErasing is enabled, we must normalize and do RE in transforms on CPU
     normalize_in_transform = dev_env.type_xla and args.reprob > 0
@@ -197,6 +199,21 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
 
                 loader_train_combine.mean = None
                 loader_train_combine.std = None
+
+    if not args.no_aug and args.rand_crop:
+        add_transform(args,
+                      normalize_in_transform,
+                      loader_train,
+                      loader_train_combine,
+                      transforms.RandomCrop(train_pp_cfg.input_size[1:], padding=train_pp_cfg.pad),
+                      0,
+                      substitute=True)
+    if not args.no_aug and train_pp_cfg.pad > 0 and not args.rand_crop:
+        add_transform(args, normalize_in_transform, loader_train, loader_train_combine,
+                      transforms.Pad(train_pp_cfg.pad), 0)
+    if not args.no_aug and train_pp_cfg.rand_rotation > 0:
+        add_transform(args, normalize_in_transform, loader_train, loader_train_combine,
+                      transforms.RandomRotation(train_pp_cfg.rand_rotation), -1)
 
     if args.reprob > 0 and train_aug_cfg is not None and not train_pp_cfg.normalize:
         random_erasing = NotNormalizedRandomErasing(probability=train_aug_cfg.re_prob,
@@ -267,9 +284,40 @@ def setup_data(args, default_cfg, dev_env: DeviceEnv, mixup_active: bool):
     return data_config, loader_eval, loader_train
 
 
+def add_transform(args,
+                  normalize_in_transform,
+                  loader_train,
+                  loader_train_combine,
+                  transform,
+                  position,
+                  substitute=False):
+    if substitute:
+
+        def insertion_function(transforms_list):
+            transforms_list[position] = transform
+    else:
+
+        def insertion_function(transforms_list):
+            transforms_list.insert(position, transform)
+
+    insertion_function(loader_train.dataset.transform.transforms)
+
+    if normalize_in_transform and args.aug_splits > 0:
+        assert isinstance(loader_train.dataset, AugMixDataset)
+        assert loader_train.dataset.normalize is not None
+        insertion_function(loader_train.dataset.normalize.transforms)
+    if loader_train_combine is not None:
+        loader_train_combine.dataset.transform.transforms.insert(position, transform)
+        if normalize_in_transform and args.aug_splits > 0:
+            assert isinstance(loader_train_combine.dataset, AugMixDataset)
+            assert loader_train_combine.dataset.normalize is not None
+            insertion_function(loader_train_combine.dataset.normalize.transforms)
+
+
 def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
     with tempfile.TemporaryDirectory() as dst:
         if args.initial_checkpoint is not None and args.initial_checkpoint.startswith("gs://"):
+            import tensorflow as tf
             checkpoint_path = os.path.join(dst, os.path.basename(args.initial_checkpoint))
             tf.io.gfile.copy(args.initial_checkpoint, checkpoint_path)
         else:
@@ -293,6 +341,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         # Adapted from https://github.com/facebookresearch/deit/blob/main/main.py#L250
         with tempfile.TemporaryDirectory() as dst:
             if args.finetune.startswith("gs://"):
+                import tensorflow as tf
                 checkpoint_path = os.path.join(dst, os.path.basename(args.finetune))
                 tf.io.gfile.copy(args.finetune, checkpoint_path)
             else:
@@ -306,10 +355,11 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
         state_dict = model.state_dict()
 
         # FIXME: probably not needed as we call `reset_classifier` below
-        for k in ['head.weight', 'head.bias', 'head_dist.weight', 'head_dist.bias', 'fc.weight', 'fc.bias', 'conv1.weight', 'conv1.bias']:
+        for k in ['head.weight', 'head.bias', 'head_dist.weight', 'head_dist.bias', 'fc.weight', 'fc.bias']:
             if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
                 _logger.info(f"Removing key {k} from pretrained checkpoint")
                 del checkpoint_model[k]
+
         try:
             num_classes = args.num_classes
             model.reset_classifier(num_classes=num_classes)
@@ -348,7 +398,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
             on = args.opt.lower()
             args.lr_base_scale = 'sqrt' if any([o in on for o in ('adam', 'lamb', 'adabelief')]) else 'linear'
         if args.lr_base_scale == 'sqrt':
-            batch_ratio = batch_ratio ** 0.5
+            batch_ratio = batch_ratio**0.5
         args.lr = args.lr_base * batch_ratio
         if dev_env.primary:
             _logger.info(f'Learning rate ({args.lr}) calculated from base learning rate ({args.lr_base}) '
@@ -356,6 +406,7 @@ def setup_train_task(args, dev_env: DeviceEnv, mixup_active: bool):
 
     with tempfile.TemporaryDirectory() as dst:
         if args.resume is not None and args.resume.startswith("gs://"):
+            import tensorflow as tf
             resume_checkpoint_path = os.path.join(dst, os.path.basename(args.resume))
             tf.io.gfile.copy(args.resume, resume_checkpoint_path)
         else:
@@ -494,6 +545,7 @@ def setup_checkpoints_output(args: Dict[str, Any], args_text: str, data_config: 
                                            max_history=args["checkpoint_hist"])
 
     if output_dir.startswith("gs://"):
+        import tensorflow as tf
         with tf.io.gfile.GFile(os.path.join(output_dir, 'args.yaml'), 'w') as f:
             f.write(args_text)
     else:
@@ -510,7 +562,7 @@ def resolve_attack_cfg(args, eval=False) -> AttackCfg:
     else:
         name = args.attack
         eps = args.attack_eps / 255
-    step_size = args.attack_lr or (1.5 * eps / args.attack_steps)
+    step_size = args.attack_lr / 255 or (1.5 * eps / args.attack_steps)
 
     return AttackCfg(name=name,
                      eps=eps,

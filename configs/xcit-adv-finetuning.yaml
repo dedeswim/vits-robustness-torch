@@ -20,7 +20,7 @@ channels_last: false
 checkpoint_hist: 10
 clip_grad: null
 clip_mode: norm
-color_jitter: 0.0
+color_jitter: 0.25
 cooldown_epochs: 2
 crop_pct: null
 cutmix: 0.0
@@ -88,16 +88,19 @@ opt: adamw
 opt_betas: null
 opt_eps: 1.0e-08
 output: gs://robust-vits/
+pad: 2
 patience_epochs: 10
 pin_mem: false
 pretrained: false
+rand_crop: true
+rand_rotation: 2
 ratio:
-- 0.95
-- 1.05
+- 1.0
+- 1.0
 recount: 1
 recovery_interval: 0
 remode: pixel
-reprob: 0.20
+reprob: 0.0
 resplit: false
 resume: ''
 save_images: false

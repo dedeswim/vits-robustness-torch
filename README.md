@@ -116,7 +116,7 @@ All the checkpoints can be found in [this](https://drive.google.com/drive/folder
 | XCiT-M12       |        45.24        |     74.04      | [link](https://drive.google.com/file/d/184utgGfgh6m_GDBe_mETWf0HmxksGCHH/view?usp=sharing) | `xcit_medium_12_p16_224` |
 | XCiT-L12       |        47.60        |     73.76      | [link](https://drive.google.com/file/d/154l0cWMtBMK64yG7gn3fzoTQSATHR8H5/view?usp=sharing) | `xcit_large_12_p16_224`  |
 | ConvNeXt-T     |        44.44        |     71.64      | [link](https://drive.google.com/file/d/1EAMVH8e67cXIFPlmK-JFFK0hzuONOWyq/view?usp=sharing) | `convnext_tiny`          |
-| GELU ResNet-50 |        35.51        |     67.38      | [link](https://drive.google.com/file/d/1akb4N1B5mmesZsYGIhhDwtO-3iiKu5tb/view?usp=sharing) | `resnet_50_gelu`         |
+| GELU ResNet-50 |        35.12        |     66.54      | [link](https://drive.google.com/file/d/1akb4N1B5mmesZsYGIhhDwtO-3iiKu5tb/view?usp=sharing) | `resnet_50_gelu`         |
 
 #### Epsilon 8
 

@@ -122,7 +122,7 @@ parser.add_argument('-b',
                     type=int,
                     default=256,
                     metavar='N',
-                    help='input batch size for training (default: 32)')
+                    help='input batch size for training (default: 256)')
 parser.add_argument('-vb',
                     '--validation-batch-size',
                     type=int,
@@ -175,11 +175,20 @@ parser.add_argument('--sched',
                     metavar='SCHEDULER',
                     help='LR scheduler (default: "cosine"')
 parser.add_argument('--lr', type=float, default=0.1, metavar='LR', help='learning rate (default: 0.05)')
-parser.add_argument('--lr-base', type=float, default=0.1, metavar='LR',
+parser.add_argument('--lr-base',
+                    type=float,
+                    default=0.1,
+                    metavar='LR',
                     help='base learning rate: lr = lr_base * global_batch_size / base_size')
-parser.add_argument('--lr-base-size', type=int, default=256, metavar='DIV',
+parser.add_argument('--lr-base-size',
+                    type=int,
+                    default=256,
+                    metavar='DIV',
                     help='base learning rate batch size (divisor, default: 256).')
-parser.add_argument('--lr-base-scale', type=str, default='', metavar='SCALE',
+parser.add_argument('--lr-base-scale',
+                    type=str,
+                    default='',
+                    metavar='SCALE',
                     help='base learning rate vs batch_size scaling ("linear", "sqrt", based on opt if empty)')
 parser.add_argument('--lr-noise',
                     type=float,
@@ -241,10 +250,13 @@ parser.add_argument('--start-epoch',
                     type=int,
                     metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('--decay-milestones', default=[30, 60], type=int, nargs='+', metavar="MILESTONES",
+parser.add_argument('--decay-milestones',
+                    default=[30, 60],
+                    type=int,
+                    nargs='+',
+                    metavar="MILESTONES",
                     help='list of decay epoch indices for multistep lr. must be increasing')
-parser.add_argument('--decay-epochs', type=float, default=100, metavar='N',
-                    help='epoch interval to decay LR')
+parser.add_argument('--decay-epochs', type=float, default=100, metavar='N', help='epoch interval to decay LR')
 parser.add_argument('--warmup-epochs',
                     type=int,
                     default=5,
@@ -284,6 +296,16 @@ parser.add_argument('--ratio',
                     default=[3. / 4., 4. / 3.],
                     metavar='RATIO',
                     help='Random resize aspect ratio (default: 0.75 1.33)')
+parser.add_argument("--rand-rotation", type=float, default=0, metavar='DEGREES', help="Random rotation angle")
+parser.add_argument("--rand-crop",
+                    action='store_true',
+                    default=False,
+                    help="Use random crop instead of resize")
+parser.add_argument('--pad',
+                    type=int,
+                    default=0,
+                    metavar='PIXELS',
+                    help='Pad image by PIXELS before cropping')
 parser.add_argument('--hflip', type=float, default=0.5, help='Horizontal flip training aug probability')
 parser.add_argument('--vflip', type=float, default=0., help='Vertical flip training aug probability')
 parser.add_argument('--color-jitter',
@@ -552,10 +574,7 @@ parser.add_argument('--keep-patch-embedding',
                     action='store_true',
                     default=False,
                     help='Re-initializes the whole patch embedder')
-parser.add_argument('--use-mp-loader',
-                    action='store_true',
-                    default=False,
-                    help='Uses torch_xla\'s MP loader')
+parser.add_argument('--use-mp-loader', action='store_true', default=False, help='Uses torch_xla\'s MP loader')
 
 
 def parse_args(additional_args=None):
@@ -567,7 +586,7 @@ def parse_args(additional_args=None):
             parser.set_defaults(**cfg)
 
     # The main arg parser parses the rest of the args, the usual
-    # defaults will have been overridden if config file specified.    
+    # defaults will have been overridden if config file specified.
     if additional_args is not None:
         remaining += additional_args
     args = parser.parse_args(remaining)

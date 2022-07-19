@@ -6,7 +6,6 @@ import tempfile
 from collections import OrderedDict
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
-import tensorflow as tf
 import timm
 import torch
 import torch.nn.functional as F
@@ -24,6 +23,7 @@ def get_outdir(path: str, *paths: str, inc=False) -> str:
     """Adapted to get out dir from GCS"""
     outdir = os.path.join(path, *paths)
     if path.startswith('gs://'):
+        import tensorflow as tf
         os_module = tf.io.gfile
         exists_fn = lambda x: os_module.exists(x)
     else:
@@ -44,6 +44,7 @@ def get_outdir(path: str, *paths: str, inc=False) -> str:
 
 
 def load_model_from_gcs(checkpoint_path: str, model_name: str, **kwargs):
+    import tensorflow as tf
     with tempfile.TemporaryDirectory() as dst:
         local_checkpoint_path = os.path.join(dst, os.path.basename(checkpoint_path))
         tf.io.gfile.copy(checkpoint_path, local_checkpoint_path)
@@ -52,12 +53,16 @@ def load_model_from_gcs(checkpoint_path: str, model_name: str, **kwargs):
 
 
 def load_state_dict_from_gcs(model: nn.Module, checkpoint_path: str):
-    with tf.io.gfile.GFile(checkpoint_path, "rb") as f:
-        model.load_state_dict(torch.load(f)["model"])
+    import tensorflow as tf
+    with tempfile.TemporaryDirectory() as dst:
+        local_checkpoint_path = os.path.join(dst, os.path.basename(checkpoint_path))
+        tf.io.gfile.copy(checkpoint_path, local_checkpoint_path)
+        model.load_state_dict(torch.load(local_checkpoint_path)["model"])
     return model
 
 
 def upload_checkpoints_gcs(checkpoints_dir: str, output_dir: str):
+    import tensorflow as tf
     checkpoints_paths = glob.glob(os.path.join(checkpoints_dir, '*.pth.tar'))
     for checkpoint in checkpoints_paths:
         gcs_checkpoint_path = os.path.join(output_dir, os.path.basename(checkpoint))
@@ -66,10 +71,12 @@ def upload_checkpoints_gcs(checkpoints_dir: str, output_dir: str):
 
 class GCSSummaryCsv(bits.monitor.SummaryCsv):
     """SummaryCSV version to work with GCS"""
+
     def __init__(self, output_dir, filename='summary.csv'):
         super().__init__(output_dir, filename)
 
     def update(self, row_dict):
+        import tensorflow as tf
         with tf.io.gfile.GFile(self.filename, mode='a') as cf:
             dw = csv.DictWriter(cf, fieldnames=row_dict.keys())
             if self.needs_header:  # first iteration (epoch == 1 can't be used)
@@ -79,6 +86,7 @@ class GCSSummaryCsv(bits.monitor.SummaryCsv):
 
 
 class ComputeLossFn(nn.Module):
+
     def __init__(self, loss_fn: nn.Module):
         super().__init__()
         self.loss_fn = loss_fn
@@ -118,11 +126,14 @@ class AdvTrainState(bits.TrainState):
 @dataclasses.dataclass
 class MyPreprocessCfg(PreprocessCfg):
     normalize: bool = True
+    rand_rotation: int = 0
+    pad: int = 0
 
 
 class ImageNormalizer(nn.Module):
     """From
     https://github.com/RobustBench/robustbench/blob/master/robustbench/model_zoo/architectures/utils_architectures.py#L8"""
+
     def __init__(self, mean: Tuple[float, float, float], std: Tuple[float, float, float]) -> None:
         super(ImageNormalizer, self).__init__()
 
@@ -142,6 +153,7 @@ def normalize_model(model: nn.Module, mean: Tuple[float, float, float], std: Tup
 
 
 class CombinedLoaders:
+
     def __init__(self, loader_1: Union[Fetcher, PrefetcherCuda], loader_2: Union[Fetcher, PrefetcherCuda]):
         self.loader_1 = loader_1
         self.loader_2 = loader_2
@@ -182,6 +194,7 @@ class CombinedLoaders:
 
 
 def write_wandb_info(notes: str, output_dir: str, wandb_run):
+    import tensorflow as tf
     assert output_dir is not None
     # Log run notes and *true* output dir to wandb
     if output_dir.startswith("gs://"):
