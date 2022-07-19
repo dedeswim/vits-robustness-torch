@@ -4,6 +4,6 @@ git+https://github.com/rwightman/pytorch-image-models.git@dff33730b38aa8e923da14
 git+https://github.com/fra31/auto-attack.git@aaba775aedf24c86099ca0340d62275878a101ae
 pyyaml
 fvcore
-jupyter-lab
+jupyterlab
 pandas
 seaborn
