@@ -90,4 +90,10 @@ def main():
     all_losses_array = np.array(all_losses)
     np.save(args.output_file, all_losses_array)
 
-        
+
+def _mp_entry(*args):
+    main()
+
+
+if __name__ == '__main__':
+    main()
