@@ -86,6 +86,7 @@ def main():
             _logger.info(f"Point {point} - run {run}")
             _, losses = attack(model, sample, target)
             all_losses[point].append(losses)
+            _logger.info(f"Point {point} - run {run} - loss: {losses[-1]:.4f}")
 
     all_losses_array = np.array(all_losses)
     np.save(args.output_file, all_losses_array)
