@@ -11,7 +11,7 @@ https://github.com/deepmind/deepmind-research/blob/master/LICENSE
 import functools
 import math
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
@@ -69,7 +69,9 @@ def pgd(model: nn.Module,
         random_targets: bool = False,
         logits_y: bool = False,
         take_sign=True,
-        dev_env: Optional[DeviceEnv] = None) -> torch.Tensor:
+        dev_env: Optional[DeviceEnv] = None,
+        return_losses: bool = False) -> Union[torch.Tensor, Tuple[List[float], torch.Tensor]]:
+    losses = []
     local_project_fn = functools.partial(project_fn, eps=eps, boundaries=boundaries)
     x_adv = init_fn(x, eps, project_fn, boundaries)
     if random_targets:
@@ -83,6 +85,8 @@ def pgd(model: nn.Module,
             F.log_softmax(model(x_adv), dim=-1),
             y,
         )
+        if return_losses:
+            losses.append(loss.item())
         grad = torch.autograd.grad(loss, x_adv)[0]
         if take_sign:
             d_x = torch.sign(grad)
@@ -100,7 +104,8 @@ def pgd(model: nn.Module,
             # Mark step here to keep XLA program size small and speed-up compilation time
             # It also seems to improve overall speed when `steps` > 1.
             dev_env.mark_step()
-
+    if return_losses:
+        return x_adv, losses
     return x_adv
 
 
