@@ -93,7 +93,7 @@ def main():
                                              return_losses=True)
                 _logger.info(f"Point {point} - run {run} - steps {step}")
                 _, losses = attack(model, sample, target)
-                row_to_write = {"seed": run, "steps": step, "loss": losses[-1]}
+                row_to_write = {"point": point, "seed": run, "steps": step, "loss": losses[-1]}
                 csv_writer.update(row_to_write)
                 _logger.info(f"Point {point} - run {run} - steps {step} - loss: {losses[-1]:.4f}")
 
