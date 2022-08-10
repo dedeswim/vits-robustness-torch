@@ -41,6 +41,8 @@ def main():
     model = timm.create_model(args.model, pretrained=not args.checkpoint, checkpoint_path=args.checkpoint)
     model = dev_env.to_device(model)
 
+    criterion = dev_env.to_device(nn.CrossEntropyLoss(reduction='none'))
+
     eps = args.attack_eps / 255
     lr = args.attack_lr or (1.5 * eps / args.attack_steps)
     attack_criterion = nn.NLLLoss(reduction="sum")
@@ -78,7 +80,10 @@ def main():
     if not eval_pp_cfg.normalize:
         loader.dataset.transform.transforms[-1] = transforms.ToTensor()
 
-    for point, (sample, target) in zip(range(args.n_points), loader):
+    if args.n_points % args.batch_size != 0:
+        raise ValueError(f"n_points ({args.n_points}) must be a multiple of batch_size ({args.batch_size})")
+
+    for batch_idx, (sample, target) in zip(range(args.n_points // args.batch_size), loader):
         for run in range(args.runs):
             for step in args.steps_to_try:
                 random_seed(run, dev_env.global_rank)
@@ -89,13 +94,16 @@ def main():
                                              args.attack_norm,
                                              args.attack_boundaries,
                                              attack_criterion,
-                                             dev_env=dev_env,
-                                             return_losses=True)
-                _logger.info(f"Point {point} - run {run} - steps {step}")
-                _, losses = attack(model, sample, target)
-                row_to_write = {"point": point, "seed": run, "steps": step, "loss": losses[-1]}
-                csv_writer.update(row_to_write)
-                _logger.info(f"Point {point} - run {run} - steps {step} - loss: {losses[-1]:.4f}")
+                                             dev_env=dev_env)
+                _logger.info(f"Point {batch_idx} - run {run} - steps {step}")
+                adv_sample = attack(model, sample, target)
+                losses = criterion(model(adv_sample), target)
+                for point_idx, loss in enumerate(losses):
+                    loss_float = loss.item()
+                    point = batch_idx * args.batch_size + point_idx
+                    row_to_write = {"point": point, "seed": run, "steps": step, "loss": loss_float}
+                    csv_writer.update(row_to_write)
+                    _logger.info(f"Point {point} - run {run} - steps {step} - loss: {loss_float:.4f}")
 
 
 def _mp_entry(*args):
