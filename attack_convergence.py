@@ -1,6 +1,6 @@
 import logging
+from pathlib import Path
 
-import numpy as np
 import timm
 from timm.bits import initialize_device
 from timm.data import create_dataset, create_loader_v2, resolve_data_config
@@ -35,7 +35,8 @@ def main():
 
     if args.output_file is None:
         args.output_file = f"{args.model}.csv"
-    csv_writer = utils.GCSSummaryCsv(args.output_file)
+    output_path = Path(args.output_file)
+    csv_writer = utils.GCSSummaryCsv(output_path.parent, filename=output_path.name)
 
     model = timm.create_model(args.model, pretrained=not args.checkpoint, checkpoint_path=args.checkpoint)
     model = dev_env.to_device(model)
@@ -82,21 +83,18 @@ def main():
             for step in args.steps_to_try:
                 random_seed(run, dev_env.global_rank)
                 attack = attacks.make_attack(args.attack,
-                                            eps,
-                                            lr,
-                                            step,
-                                            args.attack_norm,
-                                            args.attack_boundaries,
-                                            attack_criterion,
-                                            dev_env=dev_env)
+                                             eps,
+                                             lr,
+                                             step,
+                                             args.attack_norm,
+                                             args.attack_boundaries,
+                                             attack_criterion,
+                                             dev_env=dev_env,
+                                             return_losses=True)
                 _logger.info(f"Point {point} - run {run} - steps {step}")
                 _, losses = attack(model, sample, target)
-                row_to_write = {
-                    "seed": run,
-                    "steps": step,
-                    "loss": losses[-1]
-                }
-                csv_writer.write_row(row_to_write)
+                row_to_write = {"seed": run, "steps": step, "loss": losses[-1]}
+                csv_writer.update(row_to_write)
                 _logger.info(f"Point {point} - run {run} - steps {step} - loss: {losses[-1]:.4f}")
 
 
