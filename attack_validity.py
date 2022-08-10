@@ -30,7 +30,7 @@ def main():
     if args.output_file is None:
         args.output_file = f"{args.model}.npy"
 
-    model = timm.create_model(args.model, pretrained=True)
+    model = timm.create_model(args.model, pretrained=not args.checkpoint, checkpoint_path=args.checkpoint)
     model = dev_env.to_device(model)
 
     eps = args.attack_eps / 255
