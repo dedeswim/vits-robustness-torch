@@ -21,7 +21,7 @@ parser.add_argument('--output-file', type=str, default=None, metavar='N', help='
 parser.add_argument('--steps-to-try',
                     type=int,
                     nargs="+",
-                    default=(1, 2, 5, 10, 100, 200, 500),
+                    default=(1, 2, 5, 10, 50, 100, 200, 500),
                     metavar='X Y Z',
                     help='The number of steps to try')
 
