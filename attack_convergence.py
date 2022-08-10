@@ -95,10 +95,10 @@ def main():
                                              args.attack_boundaries,
                                              attack_criterion,
                                              dev_env=dev_env)
-                _logger.info(f"Point {batch_idx} - run {run} - steps {step}")
+                _logger.info(f"Points ({batch_idx * args.batch_size}, {batch_idx * args.batch_size + args.batch_size}) - run {run} - steps {step}")
                 adv_sample = attack(model, sample, target)
                 losses = criterion(model(adv_sample), target)
-                losses_np = dev_env.to_cpu(losses.detach().numpy())
+                losses_np = dev_env.to_cpu(losses).detach().numpy()
                 for point_idx, loss in enumerate(losses_np):
                     point = batch_idx * args.batch_size + point_idx
                     row_to_write = {"point": point, "seed": run, "steps": step, "loss": loss}
