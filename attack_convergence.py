@@ -72,7 +72,7 @@ def main():
         normalize=data_config['normalize'],
     )
     loader = create_loader_v2(dataset,
-                              batch_size=1,
+                              batch_size=args.batch_size,
                               is_training=False,
                               pp_cfg=eval_pp_cfg,
                               num_workers=args.workers,
@@ -98,12 +98,12 @@ def main():
                 _logger.info(f"Point {batch_idx} - run {run} - steps {step}")
                 adv_sample = attack(model, sample, target)
                 losses = criterion(model(adv_sample), target)
-                for point_idx, loss in enumerate(losses):
-                    loss_float = loss.item()
+                losses_np = dev_env.to_cpu(losses.detach().numpy())
+                for point_idx, loss in enumerate(losses_np):
                     point = batch_idx * args.batch_size + point_idx
-                    row_to_write = {"point": point, "seed": run, "steps": step, "loss": loss_float}
+                    row_to_write = {"point": point, "seed": run, "steps": step, "loss": loss}
                     csv_writer.update(row_to_write)
-                    _logger.info(f"Point {point} - run {run} - steps {step} - loss: {loss_float:.4f}")
+                    _logger.info(f"Point {point} - run {run} - steps {step} - loss: {loss:.4f}")
 
 
 def _mp_entry(*args):
