@@ -18,6 +18,12 @@ _logger = logging.getLogger('validate')
 parser.add_argument('--runs', type=int, default=20, metavar='N', help='The number of runs')
 parser.add_argument('--n-points', type=int, default=100, metavar='N', help='The number of points')
 parser.add_argument('--output-file', type=str, default=None, metavar='N', help='The output file')
+parser.add_argument('--steps-to-try',
+                    type=int,
+                    nargs="+",
+                    default=(1, 2, 5, 10, 100, 200, 500),
+                    metavar='X Y Z',
+                    help='The number of steps to try')
 
 
 def main():
@@ -28,7 +34,8 @@ def main():
     random_seed(args.seed, dev_env.global_rank)
 
     if args.output_file is None:
-        args.output_file = f"{args.model}.npy"
+        args.output_file = f"{args.model}.csv"
+    csv_writer = utils.GCSSummaryCsv(args.output_file)
 
     model = timm.create_model(args.model, pretrained=not args.checkpoint, checkpoint_path=args.checkpoint)
     model = dev_env.to_device(model)
@@ -36,15 +43,6 @@ def main():
     eps = args.attack_eps / 255
     lr = args.attack_lr or (1.5 * eps / args.attack_steps)
     attack_criterion = nn.NLLLoss(reduction="sum")
-    attack = attacks.make_attack(args.attack,
-                                 eps,
-                                 lr,
-                                 args.attack_steps,
-                                 args.attack_norm,
-                                 args.attack_boundaries,
-                                 attack_criterion,
-                                 dev_env=dev_env,
-                                 return_losses=True)
 
     dataset = create_dataset(root=args.data,
                              name=args.dataset,
@@ -79,17 +77,27 @@ def main():
     if not eval_pp_cfg.normalize:
         loader.dataset.transform.transforms[-1] = transforms.ToTensor()
 
-    all_losses = [[] for _ in range(args.n_points)]
-
     for point, (sample, target) in zip(range(args.n_points), loader):
         for run in range(args.runs):
-            _logger.info(f"Point {point} - run {run}")
-            _, losses = attack(model, sample, target)
-            all_losses[point].append(losses)
-            _logger.info(f"Point {point} - run {run} - loss: {losses[-1]:.4f}")
-
-    all_losses_array = np.array(all_losses)
-    np.save(args.output_file, all_losses_array)
+            for step in args.steps_to_try:
+                random_seed(run, dev_env.global_rank)
+                attack = attacks.make_attack(args.attack,
+                                            eps,
+                                            lr,
+                                            step,
+                                            args.attack_norm,
+                                            args.attack_boundaries,
+                                            attack_criterion,
+                                            dev_env=dev_env)
+                _logger.info(f"Point {point} - run {run} - steps {step}")
+                _, losses = attack(model, sample, target)
+                row_to_write = {
+                    "seed": run,
+                    "steps": step,
+                    "loss": losses[-1]
+                }
+                csv_writer.write_row(row_to_write)
+                _logger.info(f"Point {point} - run {run} - steps {step} - loss: {losses[-1]:.4f}")
 
 
 def _mp_entry(*args):
