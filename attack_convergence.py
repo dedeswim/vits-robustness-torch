@@ -72,6 +72,14 @@ def main():
         std=data_config['std'],
         normalize=data_config['normalize'],
     )
+    
+    if args.one_instance:
+        args.steps_to_try = [max(args.steps_to_try)]
+        args.batch_size = 1
+
+    if args.n_points % args.batch_size != 0:
+        raise ValueError(f"n_points ({args.n_points}) must be a multiple of batch_size ({args.batch_size})")
+
     loader = create_loader_v2(dataset,
                               batch_size=args.batch_size,
                               is_training=False,
@@ -80,13 +88,6 @@ def main():
                               pin_memory=args.pin_mem)
     if not eval_pp_cfg.normalize:
         loader.dataset.transform.transforms[-1] = transforms.ToTensor()
-
-    if args.n_points % args.batch_size != 0:
-        raise ValueError(f"n_points ({args.n_points}) must be a multiple of batch_size ({args.batch_size})")
-
-    if args.one_instance:
-        args.steps_to_try = [max(args.steps_to_try[0])]
-        args.batch_size = 1
 
     for batch_idx, (sample, target) in zip(range(args.n_points // args.batch_size), loader):
         for run in range(args.runs):
@@ -105,16 +106,16 @@ def main():
                 adv_sample, intermediate_losses = attack(model, sample, target)
                 final_losses = criterion(model(adv_sample), target)
                 final_losses_np = dev_env.to_cpu(final_losses).detach().numpy()
-                point_idx = batch_idx * args.batch_size + point_idx
                 if not args.one_instance:
                     for point_idx, loss in enumerate(final_losses_np):
-                        row_to_write = {"point": point_idx, "seed": run, "steps": step, "loss": loss}
+                        point = batch_idx * args.batch_size + point_idx
+                        row_to_write = {"point": point, "seed": run, "steps": step, "loss": loss}
                         csv_writer.update(row_to_write)
                         _logger.info(f"Point {point_idx} - run {run} - steps {step} - loss: {loss:.4f}")
                 else:
                     intermediate_losses_np = dev_env.to_cpu(intermediate_losses).detach().numpy()
                     for step_idx, loss in enumerate(intermediate_losses_np):
-                        row_to_write = {"point": point_idx, "seed": run, "steps": step_idx, "loss": loss}
+                        row_to_write = {"point": batch_idx, "seed": run, "steps": step_idx, "loss": loss}
                         csv_writer.update(row_to_write)
 
 

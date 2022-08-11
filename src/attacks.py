@@ -86,7 +86,7 @@ def pgd(model: nn.Module,
             y,
         )
         if return_losses:
-            losses.append(loss.item())
+            losses.append(loss)
         grad = torch.autograd.grad(loss, x_adv)[0]
         if take_sign:
             d_x = torch.sign(grad)
@@ -105,7 +105,7 @@ def pgd(model: nn.Module,
             # It also seems to improve overall speed when `steps` > 1.
             dev_env.mark_step()
     if return_losses:
-        return x_adv, losses
+        return x_adv, torch.as_tensor(losses)
     return x_adv
 
 
