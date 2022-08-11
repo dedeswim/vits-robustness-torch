@@ -24,6 +24,7 @@ parser.add_argument('--steps-to-try',
                     default=(1, 2, 5, 10, 50, 100, 200, 500),
                     metavar='X Y Z',
                     help='The number of steps to try')
+parser.add_argument('--one-instance', action='store_true', help='Run only one instance and save the losses at each step')
 
 
 def main():
@@ -83,6 +84,10 @@ def main():
     if args.n_points % args.batch_size != 0:
         raise ValueError(f"n_points ({args.n_points}) must be a multiple of batch_size ({args.batch_size})")
 
+    if args.one_instance:
+        args.steps_to_try = [max(args.steps_to_try[0])]
+        args.batch_size = 1
+
     for batch_idx, (sample, target) in zip(range(args.n_points // args.batch_size), loader):
         for run in range(args.runs):
             for step in args.steps_to_try:
@@ -94,16 +99,23 @@ def main():
                                              args.attack_norm,
                                              args.attack_boundaries,
                                              attack_criterion,
-                                             dev_env=dev_env)
+                                             dev_env=dev_env,
+                                             return_losses=True)
                 _logger.info(f"Points ({batch_idx * args.batch_size}, {batch_idx * args.batch_size + args.batch_size}) - run {run} - steps {step}")
-                adv_sample = attack(model, sample, target)
-                losses = criterion(model(adv_sample), target)
-                losses_np = dev_env.to_cpu(losses).detach().numpy()
-                for point_idx, loss in enumerate(losses_np):
-                    point = batch_idx * args.batch_size + point_idx
-                    row_to_write = {"point": point, "seed": run, "steps": step, "loss": loss}
-                    csv_writer.update(row_to_write)
-                    _logger.info(f"Point {point} - run {run} - steps {step} - loss: {loss:.4f}")
+                adv_sample, intermediate_losses = attack(model, sample, target)
+                final_losses = criterion(model(adv_sample), target)
+                final_losses_np = dev_env.to_cpu(final_losses).detach().numpy()
+                point_idx = batch_idx * args.batch_size + point_idx
+                if not args.one_instance:
+                    for point_idx, loss in enumerate(final_losses_np):
+                        row_to_write = {"point": point_idx, "seed": run, "steps": step, "loss": loss}
+                        csv_writer.update(row_to_write)
+                        _logger.info(f"Point {point_idx} - run {run} - steps {step} - loss: {loss:.4f}")
+                else:
+                    intermediate_losses_np = dev_env.to_cpu(intermediate_losses).detach().numpy()
+                    for step_idx, loss in enumerate(intermediate_losses_np):
+                        row_to_write = {"point": point_idx, "seed": run, "steps": step_idx, "loss": loss}
+                        csv_writer.update(row_to_write)
 
 
 def _mp_entry(*args):
