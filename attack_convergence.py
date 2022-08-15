@@ -1,4 +1,5 @@
 import logging
+from multiprocessing.sharedctypes import Value
 from pathlib import Path
 
 import timm
@@ -7,6 +8,8 @@ from timm.data import create_dataset, create_loader_v2, resolve_data_config
 from timm.models import apply_test_time_pool
 from timm.utils import setup_default_logging
 from torch import nn
+import torch
+from torch.utils.data import TensorDataset
 from torchvision import transforms
 
 from src import attacks, utils
@@ -21,10 +24,12 @@ parser.add_argument('--output-file', type=str, default=None, metavar='N', help='
 parser.add_argument('--steps-to-try',
                     type=int,
                     nargs="+",
-                    default=(1, 2, 5, 10, 50, 100, 200, 500),
+                    default=(0, 1, 2, 5, 10, 50, 100, 200, 500),
                     metavar='X Y Z',
                     help='The number of steps to try')
-parser.add_argument('--one-instance', action='store_true', help='Run only one instance and save the losses at each step')
+parser.add_argument('--one-instance',
+                    action='store_true',
+                    help='Run only one instance and save the losses at each step')
 
 
 def main():
@@ -72,7 +77,7 @@ def main():
         std=data_config['std'],
         normalize=data_config['normalize'],
     )
-    
+
     if args.one_instance:
         args.steps_to_try = [max(args.steps_to_try)]
         args.batch_size = 1
@@ -89,7 +94,36 @@ def main():
     if not eval_pp_cfg.normalize:
         loader.dataset.transform.transforms[-1] = transforms.ToTensor()
 
-    for batch_idx, (sample, target) in zip(range(args.n_points // args.batch_size), loader):
+    correctly_classified_samples = []
+    correctly_classified_targets = []
+
+    _logger.info("Starting creation of correctly classified DataSet and DataLoader")
+
+    for (sample, target) in loader:
+        predicted_classes = model(sample).argmax(-1)
+        batch_correctly_classified_samples = sample[predicted_classes == target]
+        batch_correctly_classified_targets = target[predicted_classes == target]
+        correctly_classified_samples.append(batch_correctly_classified_samples)
+        correctly_classified_targets.append(batch_correctly_classified_targets)
+        if len(correctly_classified_samples) >= args.n_points:
+            correctly_classified_samples = torch.cat(correctly_classified_samples)[:args.n_points]
+            correctly_classified_targets = torch.cat(correctly_classified_targets)[:args.n_points]
+            break
+
+    if len(correctly_classified_samples) != args.n_points:
+        raise ValueError("Impossible to have enough correctly classified samples.")
+    
+    correctly_classified_dataset = TensorDataset(correctly_classified_samples, correctly_classified_targets)
+    correctly_classified_loader = create_loader_v2(correctly_classified_dataset,
+                                                   batch_size=args.batch_size,
+                                                   is_training=False,
+                                                   pp_cfg=eval_pp_cfg,
+                                                   num_workers=args.workers,
+                                                   pin_memory=args.pin_mem)
+
+    _logger.info("Created correctly classified DataSet and DataLoader")
+
+    for batch_idx, (sample, target) in zip(range(args.n_points // args.batch_size), correctly_classified_loader):
         for run in range(args.runs):
             for step in args.steps_to_try:
                 random_seed(run, dev_env.global_rank)
@@ -102,10 +136,13 @@ def main():
                                              attack_criterion,
                                              dev_env=dev_env,
                                              return_losses=True)
-                _logger.info(f"Points ({batch_idx * args.batch_size}, {batch_idx * args.batch_size + args.batch_size}) - run {run} - steps {step}")
+                _logger.info(
+                    f"Points ({batch_idx * args.batch_size}, {batch_idx * args.batch_size + args.batch_size}) - run {run} - steps {step}"
+                )
                 adv_sample, intermediate_losses = attack(model, sample, target)
                 final_losses = criterion(model(adv_sample), target)
                 final_losses_np = dev_env.to_cpu(final_losses).detach().numpy()
+                intermediate_losses.append(final_losses)
                 if not args.one_instance:
                     for point_idx, loss in enumerate(final_losses_np):
                         point = batch_idx * args.batch_size + point_idx
