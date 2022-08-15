@@ -80,7 +80,6 @@ def main():
 
     if args.one_instance:
         args.steps_to_try = [max(args.steps_to_try)]
-        args.batch_size = 1
 
     if args.n_points % args.batch_size != 0:
         raise ValueError(f"n_points ({args.n_points}) must be a multiple of batch_size ({args.batch_size})")
@@ -101,8 +100,9 @@ def main():
 
     for (sample, target) in loader:
         predicted_classes = model(sample).argmax(-1)
-        batch_correctly_classified_samples = sample[predicted_classes == target]
-        batch_correctly_classified_targets = target[predicted_classes == target]
+        accuracy_mask = predicted_classes == target
+        batch_correctly_classified_samples = sample[accuracy_mask]
+        batch_correctly_classified_targets = target[accuracy_mask]
         correctly_classified_samples.append(batch_correctly_classified_samples)
         correctly_classified_targets.append(batch_correctly_classified_targets)
         if len(correctly_classified_samples) >= args.n_points:
@@ -115,7 +115,7 @@ def main():
     
     correctly_classified_dataset = TensorDataset(correctly_classified_samples, correctly_classified_targets)
     correctly_classified_loader = create_loader_v2(correctly_classified_dataset,
-                                                   batch_size=args.batch_size,
+                                                   batch_size=1 if args.one_instance else args.batch_size,
                                                    is_training=False,
                                                    pp_cfg=eval_pp_cfg,
                                                    num_workers=args.workers,
