@@ -2,6 +2,7 @@ import logging
 from multiprocessing.sharedctypes import Value
 from pathlib import Path
 
+import numpy as np
 import timm
 from timm.bits import initialize_device
 from timm.data import create_dataset, create_loader_v2, resolve_data_config
@@ -98,14 +99,15 @@ def main():
 
     _logger.info("Starting creation of correctly classified DataSet and DataLoader")
 
-    for (sample, target) in loader:
+    for batch_idx, (sample, target) in enumerate(loader):
         predicted_classes = model(sample).argmax(-1)
-        accuracy_mask = predicted_classes == target
+        accuracy_mask = predicted_classes.eq(target)
+        print(f"Batch {batch_idx} accuracy: {accuracy_mask.sum() / sample.shape[0]}")
         batch_correctly_classified_samples = sample[accuracy_mask]
         batch_correctly_classified_targets = target[accuracy_mask]
         correctly_classified_samples.append(batch_correctly_classified_samples)
         correctly_classified_targets.append(batch_correctly_classified_targets)
-        if len(correctly_classified_samples) >= args.n_points:
+        if len(torch.cat(correctly_classified_samples)) >= args.n_points:
             correctly_classified_samples = torch.cat(correctly_classified_samples)[:args.n_points]
             correctly_classified_targets = torch.cat(correctly_classified_targets)[:args.n_points]
             break
@@ -113,7 +115,7 @@ def main():
     if len(correctly_classified_samples) != args.n_points:
         raise ValueError("Impossible to have enough correctly classified samples.")
     
-    correctly_classified_dataset = TensorDataset(correctly_classified_samples, correctly_classified_targets)
+    correctly_classified_dataset = TensorDataset(*dev_env.to_cpu(correctly_classified_samples, correctly_classified_targets))
     correctly_classified_loader = create_loader_v2(correctly_classified_dataset,
                                                    batch_size=1 if args.one_instance else args.batch_size,
                                                    is_training=False,
@@ -142,7 +144,6 @@ def main():
                 adv_sample, intermediate_losses = attack(model, sample, target)
                 final_losses = criterion(model(adv_sample), target)
                 final_losses_np = dev_env.to_cpu(final_losses).detach().numpy()
-                intermediate_losses.append(final_losses)
                 if not args.one_instance:
                     for point_idx, loss in enumerate(final_losses_np):
                         point = batch_idx * args.batch_size + point_idx
@@ -150,7 +151,10 @@ def main():
                         csv_writer.update(row_to_write)
                         _logger.info(f"Point {point_idx} - run {run} - steps {step} - loss: {loss:.4f}")
                 else:
-                    intermediate_losses_np = dev_env.to_cpu(intermediate_losses).detach().numpy()
+                    intermediate_losses_np = np.concatenate([
+                        dev_env.to_cpu(intermediate_losses).detach().numpy(),
+                        final_losses_np])
+                                                    
                     for step_idx, loss in enumerate(intermediate_losses_np):
                         row_to_write = {"point": batch_idx, "seed": run, "steps": step_idx, "loss": loss}
                         csv_writer.update(row_to_write)
