@@ -132,6 +132,9 @@ def main():
 
     _logger.info("Created correctly classified DataSet and DataLoader")
 
+    # Backup batchnorm stats
+    batch_stats_backup = utils.backup_batchnorm_stats(model)
+
     for batch_idx, (sample, target, sample_id) in zip(range(args.n_points // experiment_batch_size),
                                                       correctly_classified_loader):
         sample, target, sample_id = dev_env.to_device(sample, target, sample_id)
@@ -156,11 +159,7 @@ def main():
                     assert dev_env.to_cpu(logits.argmax(-1).eq(target).all()).item()
 
                 if dev_env.type_xla:
-                    # Change model to `train` if on XLA, and backup batchnorm stats
-                    batch_stats_backup = utils.backup_batchnorm_stats(model)
                     model.train()
-                else:
-                    batch_stats_backup  = None
                 
                 # Attack sample
                 adv_sample, intermediate_losses = attack(model, sample, target)
@@ -168,7 +167,6 @@ def main():
                 
                 if dev_env.type_xla:
                     # Change model back to `eval` if on XLA, and restore batchnorm stats
-                    assert batch_stats_backup is not None
                     utils.restore_batchnorm_stats(model, batch_stats_backup)
                     model.eval()
 
