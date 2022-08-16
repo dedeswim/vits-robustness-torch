@@ -148,9 +148,13 @@ def main():
                 _logger.info(
                     f"Points ({batch_idx * experiment_batch_size}, {batch_idx * experiment_batch_size + experiment_batch_size}) - run {run} - steps {step}"
                 )
+                # Make sure that all samples are correctly classified (only need to check the first time)
+                if run == 0:
+                    logits = model(sample)
+                    assert dev_env.to_cpu(logits.argmax(-1).eq(target).all()).item()
+
+                # Attack sample
                 adv_sample, intermediate_losses = attack(model, sample, target)
-                # Make sure that all samples are correctly classified
-                assert model(sample).argmax(-1).eq(target).all()
                 final_losses = criterion(model(adv_sample), target)
                 final_losses_np = dev_env.to_cpu(final_losses).detach().numpy()
                 sample_id_numpy = dev_env.to_cpu(sample_id).detach().numpy()
