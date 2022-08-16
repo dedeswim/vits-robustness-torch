@@ -102,7 +102,8 @@ def main():
     _logger.info("Starting creation of correctly classified DataSet and DataLoader")
 
     for batch_idx, (sample, target) in enumerate(loader):
-        predicted_classes = model(sample).argmax(-1)
+        logits = model(sample)
+        predicted_classes = logits.argmax(-1)
         accuracy_mask = predicted_classes.eq(target)
         print(f"Batch {batch_idx} accuracy: {accuracy_mask.sum() / sample.shape[0]}")
         # Get correctly classified samples, targets, and ids
@@ -113,13 +114,12 @@ def main():
         correctly_classified_samples.append(dev_env.to_cpu(batch_correctly_classified_samples))
         correctly_classified_targets.append(dev_env.to_cpu(batch_correctly_classified_targets))
         correctly_classified_ids.append(dev_env.to_cpu(batch_correctly_classified_ids))
-
         if len(torch.cat(correctly_classified_samples)) >= args.n_points:
             correctly_classified_samples = torch.cat(correctly_classified_samples)[:args.n_points]
             correctly_classified_targets = torch.cat(correctly_classified_targets)[:args.n_points]
             correctly_classified_ids = torch.cat(correctly_classified_ids)[:args.n_points]
             break
-
+    
     if len(correctly_classified_samples) != args.n_points:
         raise ValueError("Impossible to have enough correctly classified samples.")
 
@@ -133,7 +133,8 @@ def main():
 
     # Backup batchnorm stats
     batch_stats_backup = utils.backup_batchnorm_stats(model)
-
+    original_state_dict = model.state_dict()
+    
     for batch_idx, (sample, target, sample_id) in zip(range(args.n_points // experiment_batch_size),
                                                       correctly_classified_loader):
         sample, target, sample_id = dev_env.to_device(sample, target, sample_id)
@@ -156,7 +157,7 @@ def main():
                 if run == 0:
                     logits = model(sample)
                     assert dev_env.to_cpu(logits.argmax(-1).eq(target).all()).item()
-
+                
                 if dev_env.type_xla:
                     model.train()
                 
@@ -166,7 +167,9 @@ def main():
                 
                 if dev_env.type_xla:
                     # Change model back to `eval` if on XLA, and restore batchnorm stats
-                    utils.restore_batchnorm_stats(model, batch_stats_backup)
+                    model = utils.restore_batchnorm_stats(model, batch_stats_backup)
+                    for k, v in model.state_dict().items():
+                        assert (original_state_dict[k] == v).all()
                     model.eval()
 
                 final_losses_np = dev_env.to_cpu(final_losses).detach().numpy()

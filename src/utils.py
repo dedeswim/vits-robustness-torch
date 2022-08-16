@@ -73,9 +73,10 @@ def backup_batchnorm_stats(model: nn.Module) -> Dict[str, torch.Tensor]:
     return {k: v for k, v in model.state_dict().items() if layer_is_batchnorm(k)}
 
 
-def restore_batchnorm_stats(model: nn.Module, stats: Dict[str, torch.Tensor]):
+def restore_batchnorm_stats(model: nn.Module, stats: Dict[str, torch.Tensor]) -> nn.Module:
     _, unexp_keys = model.load_state_dict(stats, strict=False)
     assert len(unexp_keys) == 0
+    return model
 
 
 def layer_is_batchnorm(layer_name: str):
