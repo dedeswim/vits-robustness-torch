@@ -373,6 +373,8 @@ def validate(args, dev_env=None, dataset=None, model=None, loader=None):
     else:
         attack = None
 
+    # Backup batchnorm stats
+    batch_stats_backup = utils.backup_batchnorm_stats(model)
     model.eval()
     num_steps = len(loader)
     if args.num_examples is not None:
@@ -391,7 +393,9 @@ def validate(args, dev_env=None, dataset=None, model=None, loader=None):
                         model.train()
                     with torch.enable_grad():
                         adv_sample = attack(model, sample, target)
-                    model.eval()
+                    if dev_env.type_xla:
+                        utils.restore_batchnorm_stats(model, batch_stats_backup)
+                        model.eval()
                     adv_output = model(adv_sample)
                 else:
                     adv_output = None
