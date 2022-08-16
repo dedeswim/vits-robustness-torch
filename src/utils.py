@@ -80,7 +80,7 @@ def restore_batchnorm_stats(model: nn.Module, stats: Dict[str, torch.Tensor]):
 
 def layer_is_batchnorm(layer_name: str):
     keys = {"bn", "batchnorm"}
-    return all(map(lambda key: key in layer_name, keys))
+    return any(map(lambda key: key in layer_name, keys))
 
 
 class GCSSummaryCsv(bits.monitor.SummaryCsv):
