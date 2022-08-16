@@ -12,7 +12,6 @@ from torch import nn
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 from torchvision import transforms
-from zmq import device
 
 from src import attacks, utils
 from src.random import random_seed
