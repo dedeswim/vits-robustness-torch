@@ -69,6 +69,20 @@ def upload_checkpoints_gcs(checkpoints_dir: str, output_dir: str):
         tf.io.gfile.copy(checkpoint, gcs_checkpoint_path)
 
 
+def backup_batchnorm_stats(model: nn.Module) -> Dict[str, torch.Tensor]:
+    return {k: v for k, v in model.state_dict().items() if layer_is_batchnorm(k)}
+
+
+def restore_batchnorm_stats(model: nn.Module, stats: Dict[str, torch.Tensor]):
+    _, unexp_keys = model.load_state_dict(stats, strict=False)
+    assert len(unexp_keys) == 0
+
+
+def layer_is_batchnorm(layer_name: str):
+    keys = {"bn", "batchnorm"}
+    return all(map(lambda key: key in layer_name, keys))
+
+
 class GCSSummaryCsv(bits.monitor.SummaryCsv):
     """SummaryCSV version to work with GCS"""
 
