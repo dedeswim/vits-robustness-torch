@@ -1,4 +1,3 @@
-from ast import arg
 import logging
 from multiprocessing.sharedctypes import Value
 from pathlib import Path
@@ -11,7 +10,7 @@ from timm.models import apply_test_time_pool
 from timm.utils import setup_default_logging
 from torch import nn
 import torch
-from torch.utils.data import TensorDataset
+from torch.utils.data import TensorDataset, DataLoader
 from torchvision import transforms
 
 from src import attacks, utils
@@ -125,17 +124,14 @@ def main():
 
     correctly_classified_dataset = TensorDataset(correctly_classified_samples, correctly_classified_targets,
                                                  correctly_classified_ids)
-    correctly_classified_loader = create_loader_v2(correctly_classified_dataset,
-                                                   batch_size=1 if args.one_instance else args.batch_size,
-                                                   is_training=False,
-                                                   pp_cfg=eval_pp_cfg,
-                                                   num_workers=args.workers,
-                                                   pin_memory=args.pin_mem)
+    correctly_classified_loader = DataLoader(correctly_classified_dataset,
+                                             batch_size=1 if args.one_instance else args.batch_size)
 
     _logger.info("Created correctly classified DataSet and DataLoader")
 
     for batch_idx, (sample, target, sample_id) in zip(range(args.n_points // args.batch_size),
                                                       correctly_classified_loader):
+        sample, target, sample_id = dev_env.to_device(sample, target, sample_id)
         for run in range(args.runs):
             for step in args.steps_to_try:
                 random_seed(run, dev_env.global_rank)
@@ -165,7 +161,12 @@ def main():
                         [dev_env.to_cpu(intermediate_losses).detach().numpy(), final_losses_np])
 
                     for step_idx, loss in enumerate(intermediate_losses_np):
-                        row_to_write = {"point": sample_id_numpy.item(), "seed": run, "steps": step_idx, "loss": loss}
+                        row_to_write = {
+                            "point": sample_id_numpy.item(),
+                            "seed": run,
+                            "steps": step_idx,
+                            "loss": loss
+                        }
                         csv_writer.update(row_to_write)
 
 
