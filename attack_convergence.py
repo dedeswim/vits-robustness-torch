@@ -12,6 +12,7 @@ from torch import nn
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 from torchvision import transforms
+from zmq import device
 
 from src import attacks, utils
 from src.random import random_seed
@@ -47,6 +48,7 @@ def main():
 
     model = timm.create_model(args.model, pretrained=not args.checkpoint, checkpoint_path=args.checkpoint)
     model = dev_env.to_device(model)
+    model.eval()
 
     criterion = dev_env.to_device(nn.CrossEntropyLoss(reduction='none'))
 
@@ -153,9 +155,23 @@ def main():
                     logits = model(sample)
                     assert dev_env.to_cpu(logits.argmax(-1).eq(target).all()).item()
 
+                if dev_env.type_xla:
+                    # Change model to `train` if on XLA, and backup batchnorm stats
+                    batch_stats_backup = utils.backup_batchnorm_stats(model)
+                    model.train()
+                else:
+                    batch_stats_backup  = None
+                
                 # Attack sample
                 adv_sample, intermediate_losses = attack(model, sample, target)
                 final_losses = criterion(model(adv_sample), target)
+                
+                if dev_env.type_xla:
+                    # Change model back to `eval` if on XLA, and restore batchnorm stats
+                    assert batch_stats_backup is not None
+                    utils.restore_batchnorm_stats(model, batch_stats_backup)
+                    model.eval()
+
                 final_losses_np = dev_env.to_cpu(final_losses).detach().numpy()
                 sample_id_numpy = dev_env.to_cpu(sample_id).detach().numpy()
                 if not args.one_instance:
