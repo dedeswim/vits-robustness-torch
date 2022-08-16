@@ -1,3 +1,4 @@
+from ast import arg
 import logging
 from multiprocessing.sharedctypes import Value
 from pathlib import Path
@@ -96,6 +97,7 @@ def main():
 
     correctly_classified_samples = []
     correctly_classified_targets = []
+    correctly_classified_ids = []
 
     _logger.info("Starting creation of correctly classified DataSet and DataLoader")
 
@@ -103,19 +105,26 @@ def main():
         predicted_classes = model(sample).argmax(-1)
         accuracy_mask = predicted_classes.eq(target)
         print(f"Batch {batch_idx} accuracy: {accuracy_mask.sum() / sample.shape[0]}")
+        # Get correctly classified samples, targets, and ids
         batch_correctly_classified_samples = sample[accuracy_mask]
         batch_correctly_classified_targets = target[accuracy_mask]
-        correctly_classified_samples.append(batch_correctly_classified_samples)
-        correctly_classified_targets.append(batch_correctly_classified_targets)
+        batch_correctly_classified_ids = accuracy_mask.nonzero().flatten() + batch_idx * args.batch_size
+
+        correctly_classified_samples.append(dev_env.to_cpu(batch_correctly_classified_samples))
+        correctly_classified_targets.append(dev_env.to_cpu(batch_correctly_classified_targets))
+        correctly_classified_ids.append(dev_env.to_cpu(batch_correctly_classified_ids))
+
         if len(torch.cat(correctly_classified_samples)) >= args.n_points:
             correctly_classified_samples = torch.cat(correctly_classified_samples)[:args.n_points]
             correctly_classified_targets = torch.cat(correctly_classified_targets)[:args.n_points]
+            correctly_classified_ids = torch.cat(correctly_classified_ids)[:args.n_points]
             break
 
     if len(correctly_classified_samples) != args.n_points:
         raise ValueError("Impossible to have enough correctly classified samples.")
-    
-    correctly_classified_dataset = TensorDataset(*dev_env.to_cpu(correctly_classified_samples, correctly_classified_targets))
+
+    correctly_classified_dataset = TensorDataset(correctly_classified_samples, correctly_classified_targets,
+                                                 correctly_classified_ids)
     correctly_classified_loader = create_loader_v2(correctly_classified_dataset,
                                                    batch_size=1 if args.one_instance else args.batch_size,
                                                    is_training=False,
@@ -125,7 +134,8 @@ def main():
 
     _logger.info("Created correctly classified DataSet and DataLoader")
 
-    for batch_idx, (sample, target) in zip(range(args.n_points // args.batch_size), correctly_classified_loader):
+    for batch_idx, (sample, target, sample_id) in zip(range(args.n_points // args.batch_size),
+                                                      correctly_classified_loader):
         for run in range(args.runs):
             for step in args.steps_to_try:
                 random_seed(run, dev_env.global_rank)
@@ -144,19 +154,18 @@ def main():
                 adv_sample, intermediate_losses = attack(model, sample, target)
                 final_losses = criterion(model(adv_sample), target)
                 final_losses_np = dev_env.to_cpu(final_losses).detach().numpy()
+                sample_id_numpy = dev_env.to_cpu(sample_id).detach().numpy()
                 if not args.one_instance:
-                    for point_idx, loss in enumerate(final_losses_np):
-                        point = batch_idx * args.batch_size + point_idx
-                        row_to_write = {"point": point, "seed": run, "steps": step, "loss": loss}
+                    for point_id, loss in zip(sample_id_numpy, final_losses_np):
+                        row_to_write = {"point": point_id, "seed": run, "steps": step, "loss": loss}
                         csv_writer.update(row_to_write)
-                        _logger.info(f"Point {point_idx} - run {run} - steps {step} - loss: {loss:.4f}")
+                        _logger.info(f"Point {point_id} - run {run} - steps {step} - loss: {loss:.4f}")
                 else:
-                    intermediate_losses_np = np.concatenate([
-                        dev_env.to_cpu(intermediate_losses).detach().numpy(),
-                        final_losses_np])
-                                                    
+                    intermediate_losses_np = np.concatenate(
+                        [dev_env.to_cpu(intermediate_losses).detach().numpy(), final_losses_np])
+
                     for step_idx, loss in enumerate(intermediate_losses_np):
-                        row_to_write = {"point": batch_idx, "seed": run, "steps": step_idx, "loss": loss}
+                        row_to_write = {"point": sample_id_numpy.item(), "seed": run, "steps": step_idx, "loss": loss}
                         csv_writer.update(row_to_write)
 
 
