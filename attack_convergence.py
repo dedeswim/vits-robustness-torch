@@ -119,22 +119,21 @@ def main():
             correctly_classified_targets = torch.cat(correctly_classified_targets)[:args.n_points]
             correctly_classified_ids = torch.cat(correctly_classified_ids)[:args.n_points]
             break
-    
+
     if len(correctly_classified_samples) != args.n_points:
         raise ValueError("Impossible to have enough correctly classified samples.")
 
     correctly_classified_dataset = TensorDataset(correctly_classified_samples, correctly_classified_targets,
                                                  correctly_classified_ids)
     experiment_batch_size = 1 if args.one_instance else args.batch_size
-    correctly_classified_loader = DataLoader(correctly_classified_dataset,
-                                             batch_size=experiment_batch_size)
+    correctly_classified_loader = DataLoader(correctly_classified_dataset, batch_size=experiment_batch_size)
 
     _logger.info("Created correctly classified DataSet and DataLoader")
 
     # Backup batchnorm stats
     batch_stats_backup = utils.backup_batchnorm_stats(model)
     original_state_dict = model.state_dict()
-    
+
     for batch_idx, (sample, target, sample_id) in zip(range(args.n_points // experiment_batch_size),
                                                       correctly_classified_loader):
         sample, target, sample_id = dev_env.to_device(sample, target, sample_id)
@@ -157,14 +156,14 @@ def main():
                 if run == 0:
                     logits = model(sample)
                     assert dev_env.to_cpu(logits.argmax(-1).eq(target).all()).item()
-                
+
                 if dev_env.type_xla:
                     model.train()
-                
+
                 # Attack sample
                 adv_sample, intermediate_losses = attack(model, sample, target)
                 final_losses = criterion(model(adv_sample), target)
-                
+
                 if dev_env.type_xla:
                     # Change model back to `eval` if on XLA, and restore batchnorm stats
                     model = utils.restore_batchnorm_stats(model, batch_stats_backup)
