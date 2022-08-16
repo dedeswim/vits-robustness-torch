@@ -125,7 +125,8 @@ def main():
     correctly_classified_dataset = TensorDataset(correctly_classified_samples, correctly_classified_targets,
                                                  correctly_classified_ids)
     experiment_batch_size = 1 if args.one_instance else args.batch_size
-    correctly_classified_loader = DataLoader(correctly_classified_dataset, batch_size=experiment_batch_size)
+    correctly_classified_loader = DataLoader(correctly_classified_dataset,
+                                             batch_size=experiment_batch_size)
 
     _logger.info("Created correctly classified DataSet and DataLoader")
 
