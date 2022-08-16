@@ -124,12 +124,13 @@ def main():
 
     correctly_classified_dataset = TensorDataset(correctly_classified_samples, correctly_classified_targets,
                                                  correctly_classified_ids)
+    experiment_batch_size = 1 if args.one_instance else args.batch_size
     correctly_classified_loader = DataLoader(correctly_classified_dataset,
-                                             batch_size=1 if args.one_instance else args.batch_size)
+                                             batch_size=experiment_batch_size)
 
     _logger.info("Created correctly classified DataSet and DataLoader")
 
-    for batch_idx, (sample, target, sample_id) in zip(range(args.n_points // args.batch_size),
+    for batch_idx, (sample, target, sample_id) in zip(range(args.n_points // experiment_batch_size),
                                                       correctly_classified_loader):
         sample, target, sample_id = dev_env.to_device(sample, target, sample_id)
         for run in range(args.runs):
