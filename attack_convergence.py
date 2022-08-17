@@ -46,8 +46,6 @@ def main():
     csv_writer = utils.GCSSummaryCsv(output_path.parent, filename=output_path.name)
 
     model = timm.create_model(args.model, pretrained=not args.checkpoint, checkpoint_path=args.checkpoint)
-    model = dev_env.to_device(model)
-    model.eval()
 
     criterion = dev_env.to_device(nn.CrossEntropyLoss(reduction='none'))
 
@@ -57,8 +55,7 @@ def main():
 
     dataset = create_dataset(root=args.data,
                              name=args.dataset,
-                             split=args.split,
-                             download=args.dataset_download)
+                             split=args.split)
 
     data_config = resolve_data_config(vars(args), model=model, use_test_size=True, verbose=True)
     data_config['normalize'] = not (args.no_normalize or args.normalize_model)
@@ -67,6 +64,9 @@ def main():
         mean = args.mean or data_config["mean"]
         std = args.std or data_config["std"]
         model = utils.normalize_model(model, mean=mean, std=std)
+    
+    model = dev_env.to_device(model)
+    model.eval()
 
     test_time_pool = False
     if args.test_pool:
