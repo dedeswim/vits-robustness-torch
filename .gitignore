@@ -283,4 +283,5 @@ checkpoints
 notebooks/outputs
 .tensorboard/
 tensorboard
-drive_checkpoints/
+drive_checkpoints/.DS_Store
+.DS_Store
