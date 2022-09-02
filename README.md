@@ -1,6 +1,6 @@
-# Adversarially Robust Vision Transformers
+# A *Light* Recipe to Train Robust Vision Transformers
 
-Repository for the *Adversarially Robust Vision Transformers* paper. It contains both the code and the checkpoints of 22 models from the paper relative to 4 different datasets.
+Repository for the paper **A *Light* Recipe to Train Robust Vision Transformers***. It contains both the code and the checkpoints of 22 models from the paper relative to 5 different datasets.
 
 ## Abstract
 
