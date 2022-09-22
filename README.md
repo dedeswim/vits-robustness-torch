@@ -245,3 +245,7 @@ In order to run the unit tests in the repo, install pytest via `pip install pyte
 ```bash
 python -m pytest .
 ```
+
+## Acknowledgments
+
+As mentioned above, this codebase is based on `timm`, we thank @rwightman for sharing it. Moreover, we thank Google’s [TPU Research Cloud (TRC) program](https://sites.research.google/trc/about/), which provided us with extremely generous computing resources which enabled us to train the models we are sharing.
