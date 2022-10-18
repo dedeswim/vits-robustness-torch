@@ -249,3 +249,20 @@ python -m pytest .
 ## Acknowledgments
 
 As mentioned above, this codebase is based on `timm`, we thank @rwightman for sharing it. Moreover, we thank Google’s [TPU Research Cloud (TRC) program](https://sites.research.google/trc/about/), which provided us with extremely generous computing resources which enabled us to train the models we are sharing.
+
+## Citation
+
+If you find our work useful, please consider citing it using the following BibTeX entry:
+
+```bibtex
+@misc{debenedetti2022light,
+  doi = {10.48550/ARXIV.2209.07399},
+  url = {https://arxiv.org/abs/2209.07399},
+  author = {Debenedetti, Edoardo and Sehwag, Vikash and Mittal, Prateek},
+  keywords = {Computer Vision and Pattern Recognition (cs.CV), Machine Learning (cs.LG), FOS: Computer and information sciences, FOS: Computer and information sciences},
+  title = {A Light Recipe to Train Robust Vision Transformers},
+  publisher = {arXiv},
+  year = {2022},
+  copyright = {arXiv.org perpetual, non-exclusive license}
+}
+```
