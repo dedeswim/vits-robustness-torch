@@ -69,6 +69,7 @@ def pgd(model: nn.Module,
         random_targets: bool = False,
         logits_y: bool = False,
         take_sign=True,
+        normalize=False,
         dev_env: Optional[DeviceEnv] = None,
         return_losses: bool = False) -> Union[torch.Tensor, Tuple[List[float], torch.Tensor]]:
     losses = []
@@ -77,8 +78,10 @@ def pgd(model: nn.Module,
     if random_targets:
         assert num_classes is not None
         y = torch.randint_like(y, 0, num_classes, device=y.device)
+    
     if len(y.size()) > 1 and not logits_y:
         y = y.argmax(dim=-1)
+    
     for _ in range(steps):
         x_adv.requires_grad_()
         loss = criterion(
@@ -88,22 +91,33 @@ def pgd(model: nn.Module,
         if return_losses:
             losses.append(loss)
         grad = torch.autograd.grad(loss, x_adv)[0]
+        # Differentiate between L2 and Linf, though this can be probably abstracted better
+        # Take sign for Linf
         if take_sign:
             d_x = torch.sign(grad)
+        # Or normalize for L2
+        elif normalize:
+            # from the robustness library
+            l = len(x.shape) - 1
+            grad_norm = torch.norm(grad.view(grad.shape[0], -1), dim=1).view(-1, *([1] * l))
+            d_x = grad / (grad_norm + 1e-10)
         else:
             d_x = grad
         if targeted:
             # Minimize the loss if the attack is targeted
             x_adv = x_adv.detach() - step_size * d_x
         else:
+            # Otherwise maximize
             x_adv = x_adv.detach() + step_size * d_x
 
+        # Project into the allowed domain
         x_adv = local_project_fn(x, x_adv)
 
         if dev_env is not None:
             # Mark step here to keep XLA program size small and speed-up compilation time
             # It also seems to improve overall speed when `steps` > 1.
             dev_env.mark_step()
+    
     if return_losses:
         return x_adv, torch.as_tensor(losses)
     return x_adv
@@ -112,11 +126,10 @@ def pgd(model: nn.Module,
 _ATTACKS = {
     "pgd": pgd,
     "targeted_pgd": functools.partial(pgd, targeted=True, random_targets=True),
-    "real_pgd": functools.partial(pgd, take_sign=False)
 }
-_INIT_PROJECT_FN: Dict[str, Tuple[InitFn, ProjectFn]] = {
-    "linf": (init_linf, project_linf),
-    "l2": (init_l2, project_l2)
+_INIT_PROJECT_FN: Dict[str, Tuple[InitFn, ProjectFn, bool, bool]] = {
+    "linf": (init_linf, project_linf, True, False),
+    "l2": (init_l2, project_l2, False, True)
 }
 
 
@@ -155,7 +168,7 @@ def make_train_attack(attack_name: str, schedule: str, final_eps: float, period:
                       step_size: float, steps: int, norm: Norm, boundaries: Tuple[float, float],
                       criterion: nn.Module, num_classes: int, logits_y: bool, **kwargs) -> TrainAttackFn:
     attack_fn = _ATTACKS[attack_name]
-    init_fn, project_fn = _INIT_PROJECT_FN[norm]
+    init_fn, project_fn, take_sign, normalize = _INIT_PROJECT_FN[norm]
     schedule_fn = _SCHEDULES[schedule](final_eps, period, zero_eps_epochs)
 
     def attack(model: nn.Module, x: torch.Tensor, y: torch.Tensor, step: int) -> torch.Tensor:
@@ -172,6 +185,8 @@ def make_train_attack(attack_name: str, schedule: str, final_eps: float, period:
                          criterion=criterion,
                          num_classes=num_classes,
                          logits_y=logits_y,
+                         take_sign=take_sign,
+                         normalize=normalize,
                          **kwargs)
 
     return attack
@@ -188,7 +203,7 @@ def make_attack(attack: str,
                 **attack_kwargs) -> AttackFn:
     if attack not in {"autoattack", "apgd-ce"}:
         attack_fn = _ATTACKS[attack]
-        init_fn, project_fn = _INIT_PROJECT_FN[norm]
+        init_fn, project_fn, take_sign, normalize = _INIT_PROJECT_FN[norm]
         return functools.partial(attack_fn,
                                  eps=eps,
                                  step_size=step_size,
@@ -197,6 +212,8 @@ def make_attack(attack: str,
                                  init_fn=init_fn,
                                  project_fn=project_fn,
                                  criterion=criterion,
+                                 take_sign=take_sign,
+                                 normalize=normalize,
                                  **attack_kwargs)
     if attack in {"apgd-ce"}:
         attack_kwargs["version"] = "custom"
