@@ -8,7 +8,7 @@ Repository for the paper **A *Light* Recipe to Train Robust Vision Transformers*
 
 ## News
 
-The paper was accepted at the first IEEE Conference on Secure and Trustworthy Machine Learning [SaTML](https://satml.org)!
+The paper was accepted at the first [IEEE Conference on Secure and Trustworthy Machine Learning](https://satml.org) (SaTML)!
 
 ## Abstract
 
