@@ -4,7 +4,11 @@
 
 \*work done as a Master's student at EPFL
 
-Repository for the paper **A *Light* Recipe to Train Robust Vision Transformers***. It contains both the code and the checkpoints of 22 models from the paper relative to 5 different datasets. The codebase is also capable of training models if they are part of, or can be integrated in `timm`, on both GPUs and TPUs. It also supports any 3-channels image classification dataset which is either part of `tfds` or `torchvision`.
+Repository for the paper **A *Light* Recipe to Train Robust Vision Transformers**. It contains both the code and the checkpoints of 22 models from the paper relative to 5 different datasets. The codebase is also capable of training models if they are part of, or can be integrated in `timm`, on both GPUs and TPUs. It also supports any 3-channels image classification dataset which is either part of `tfds` or `torchvision`.
+
+## News
+
+The paper was accepted at the first IEEE Conference on Secure and Trustworthy Machine Learning [SaTML](https://satml.org)!
 
 ## Abstract
 
