@@ -260,11 +260,11 @@ If you find our work useful, please consider citing it using the following BibTe
 
 ```bibtex
 @inproceedings{
-debenedetti2023light,
-title={A Light Recipe to Train Robust Vision Transformers},
-author={Edoardo Debenedetti and Vikash Sehwag and Prateek Mittal},
-booktitle={First IEEE Conference on Secure and Trustworthy Machine Learning},
-year={2023},
-url={https://openreview.net/forum?id=IztT98ky0cKs}
+  debenedetti2023light,
+  title={A Light Recipe to Train Robust Vision Transformers},
+  author={Edoardo Debenedetti and Vikash Sehwag and Prateek Mittal},
+  booktitle={First IEEE Conference on Secure and Trustworthy Machine Learning},
+  year={2023},
+  url={https://openreview.net/forum?id=IztT98ky0cKs}
 }
 ```
